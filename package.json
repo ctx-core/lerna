@@ -1,6 +1,6 @@
 {
 	"name": "@ctx-core/lerna",
-	"version": "2.0.25",
+	"version": "2.0.26",
 	"description": "ctx-core lerna",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
