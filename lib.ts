@@ -1,11 +1,24 @@
-import Command from '@lerna/command'
+import os from 'os'
+import log from 'npmlog'
+import dedent from 'dedent'
+import pPipe from 'p-pipe'
+import pWaterfall from 'p-waterfall'
 import { VersionCommand } from '@lerna/version'
 import { PublishCommand } from '@lerna/publish'
-import runTopologically from '@lerna/run-topologically'
 import { createRunner } from '@lerna/run-lifecycle'
+import collectUpdates from '@lerna/collect-updates'
+import ConventionalCommitUtilities from '@lerna/conventional-commits'
+import checkWorkingTree from '@lerna/check-working-tree'
+import describeRef from '@lerna/describe-ref'
+import runTopologically from '@lerna/run-topologically'
+import gitAdd from '@lerna/version/lib/git-add'
 import gitCommit from '@lerna/version/lib/git-commit'
 import gitTag from '@lerna/version/lib/git-tag'
-import gitAdd from '@lerna/version/lib/git-add'
+import createRelease from '@lerna/version/lib/create-release'
+import getCurrentBranch from '@lerna/version/lib/get-current-branch'
+import gitPush from '@lerna/version/lib/git-push'
+import { updateLockfileVersion } from '@lerna/version/lib/update-lockfile-version'
+import ValidationError from '@lerna/validation-error'
 import npmConf from '@lerna/npm-conf'
 export async function lerna_version__submodules(argv) {
 	const command = new VersionSubmoduleCommand(argv)
@@ -15,119 +28,315 @@ export async function lerna_publish__submodules(argv) {
 	const command = new PublishSubmoduleCommand(argv)
 	return await command.runner
 }
-type ARGV__GitCommitAndTagVersionSubmoduleCommand = {
-	pkg:any
-	version:string
-	tag:string
-	execOpts:any
-	message?:string
-	[key:string]:any
-}
-class VersionSubmoduleCommand extends Command {
+class VersionSubmoduleCommand extends VersionCommand {
 	argv:any
 	runner:Promise<any>
+	options:any
+	execOpts:any
+	gitOpts:any
+	logger:any
+	project:any
+	concurrency:number
+	globalVersion:string
+	tagPrefix:string
+	requiresGit:boolean
+	currentBranch:string
+	pushToRemote:boolean
+	gitRemote:string
+	commitAndTag:boolean
+	updates:any[]
+	packageGraph:any
+	composed:boolean
+	hasRootedLeaf:boolean
+	runPackageLifecycle:(any, string)=>any
+	runRootLifecycle:(any)=>any
+	setUpdatesForVersions:any
+	getVersionsForUpdates:any
+	confirmVersions:()=>Promise<any>
+	packagesToVersion:any[]
+	updatesVersions:Map<string, string>
+	createRelease:boolean
+	releaseNotes:{ name:string, notes:any }[]
+	commitAndTagUpdates:()=>Promise<any>
+	tags:string[]
+	savePrefix:string
 	constructor(argv) {
 		super(argv)
 	}
 	async initialize() {
-	}
-	async execute() {
-		// lerna version --skip-git
-		const version =
-			new VersionCommand(
-				Object.assign({},
-					this.argv, {
-						gitTagVersion: false,
-						'git-tag-version': false,
-						push: false,
-					}))
-		const rv = await version.runner
-		const packages = version.packagesToVersion
-		await runTopologically(
-			packages,
-			async pkg=>{
-				const { location, name, version } = pkg
-				gitAdd(['package.json'], {
-					cwd: location,
+		if (!this.project.isIndependent()) {
+			this.logger.info('current version', this.project.version)
+		}
+		const updatesA2 = await Promise.all(
+			this.packageGraph.rawPackageList.map(
+				pkg=>{
+					return collectUpdates(
+						[pkg],
+						this.packageGraph,
+						this.execOptsPkg(pkg),
+						this.options
+					)
+				}
+			)
+		)
+		this.updates =
+			[].concat(...updatesA2)
+				.filter(node=>{
+					if (!node.version) {
+						// a package may be unversioned only if it is private
+						if (node.pkg.private) {
+							this.logger.info('version', 'Skipping unversioned private package %j', node.name)
+						} else {
+							throw new ValidationError(
+								'ENOVERSION',
+								dedent`
+									A version field is required in ${node.name}'s package.json file.
+									If you wish to keep the package unversioned, it must be made private.
+								`
+							)
+						}
+					}
+					return !!node.version
 				})
-				const command = new GitCommitAndTagVersionSubmoduleCommand({
-					pkg,
-					version,
-					tag: `${name}@${version}`,
-					execOpts: {
-						cwd: location,
+		if (!this.updates.length) {
+			this.logger.success(`No changed packages to ${this.composed ? 'publish' : 'version'}`)
+			// still exits zero, aka "ok"
+			return false
+		}
+		// a "rooted leaf" is the regrettable pattern of adding "." to the "packages" config in lerna.json
+		this.hasRootedLeaf = this.packageGraph.has(this.project.manifest.name)
+		if (this.hasRootedLeaf && !this.composed) {
+			this.logger.info('version', 'rooted leaf detected, skipping synthetic root lifecycles')
+		}
+		this.runPackageLifecycle = createRunner(this.options)
+		// don't execute recursively if run from a poorly-named script
+		this.runRootLifecycle =
+			/^(pre|post)?version$/.test(process.env.npm_lifecycle_event)
+			? stage=>{
+				this.logger.warn('lifecycle', 'Skipping root %j because it has already been called', stage)
+			}
+			: stage=>this.runPackageLifecycle(this.project.manifest, stage)
+		const tasks = [
+			()=>this.getVersionsForUpdates(),
+			versions=>this.setUpdatesForVersions(versions),
+			()=>this.confirmVersions(),
+		]
+		// amending a commit probably means the working tree is dirty
+		if (this.commitAndTag && this.gitOpts.amend !== true) {
+			this.packageGraph.forEach(pkg=>{
+				const execOpts = this.execOptsPkg(pkg)
+				const check = checkWorkingTree.mkThrowIfUncommitted(execOpts)
+				tasks.unshift(async ()=>{
+					try {
+						const ref = await describeRef(execOpts)
+						return await check(ref)
+					} catch (e) {
+						if (e.name === 'ValidationError') {
+							log.error(pkg.location)
+						}
+						throw e
 					}
 				})
-				await command.runner
-			},
-			{
-				concurrency: version.concurrency || 1,
-			}
-		)
-		return rv
-	}
-}
-class GitCommitAndTagVersionSubmoduleCommand extends Command {
-	logger:any
-	project:any
-	options:any
-	gitOpts:any
-	execOpts:any
-	runner:Promise<any>
-	runPackageLifecycle:any
-	// runRootLifecycle:any
-	constructor(argv:ARGV__GitCommitAndTagVersionSubmoduleCommand) {
-		super(argv)
-	}
-	get tag() {
-		return this.options.tag
-	}
-	get pkg() {
-		return this.options.pkg
-	}
-	get version() {
-		return this.options.version
-	}
-	async initialize() {
-		const {
-			amend,
-			commitHooks = true,
-			signGitCommit,
-			signGitTag,
-		} = this.options
-		this.runPackageLifecycle = createRunner(this.options)
-		this.gitOpts = {
-			amend,
-			commitHooks,
-			signGitCommit,
-			signGitTag,
+			})
+		} else {
+			this.logger.warn('version', 'Skipping working tree validation, proceed at your own risk')
 		}
-		// don't execute recursively if run from a poorly-named script
-		// this.runRootLifecycle =
-		// 	/^(pre|post)?version$/.test(process.env.npm_lifecycle_event)
-		// 	? stage=>{
-		// 		this.logger.warn('lifecycle', 'Skipping root %j because it has already been called', stage)
-		// 	}
-		// 	: stage=>this.runPackageLifecycle(this.project.manifest, stage)
-		this.execOpts.cwd = this.options.execOpts.cwd || this.execOpts.cwd
+		return pWaterfall(tasks)
 	}
 	async execute() {
-		await this.commitAndTagUpdates()
+		const tasks:(()=>Promise<any>)[] = [()=>this.updatePackageVersions()]
+		if (this.commitAndTag) {
+			tasks.push(()=>this.commitAndTagUpdates())
+		} else {
+			this.logger.info('execute', 'Skipping git tag/commit')
+		}
+		if (this.pushToRemote) {
+			tasks.push(()=>this.gitPushToRemote())
+		} else {
+			this.logger.info('execute', 'Skipping git push')
+		}
+		if (this.createRelease) {
+			this.logger.info('execute', 'Creating releases...')
+			this.packagesToVersion.forEach(pkg=>{
+				tasks.push(()=>
+					createRelease(
+						this.options.createRelease,
+						{ tags: this.tags, releaseNotes: this.releaseNotes },
+						{ gitRemote: this.options.gitRemote, execOpts: this.execOptsPkg(pkg) }
+					)
+				)
+			})
+		} else {
+			this.logger.info('execute', 'Skipping releases')
+		}
+		return pWaterfall(tasks).then(()=>{
+			if (!this.composed) {
+				this.logger.success('version', 'finished')
+			}
+			return {
+				updates: this.updates,
+				updatesVersions: this.updatesVersions,
+			}
+		})
 	}
-	async commitAndTagUpdates() {
-		const { tag, version } = this
+	updatePackageVersions() {
+		const { conventionalCommits, changelogPreset, changelog = true } = this.options
+		const independentVersions = this.project.isIndependent()
+		const rootPath = this.project.manifest.location
+		const changedFiles = new Set()
+		// my kingdom for async await :(
+		let chain = Promise.resolve()
+		// preversion:  Run BEFORE bumping the package version.
+		// version:     Run AFTER bumping the package version, but BEFORE commit.
+		// postversion: Run AFTER bumping the package version, and AFTER commit.
+		// @see https://docs.npmjs.com/misc/scripts
+		if (!this.hasRootedLeaf) {
+			// exec preversion lifecycle in root (before all updates)
+			chain = chain.then(()=>this.runRootLifecycle('preversion'))
+		}
+		const actions:(pPipe.UnaryFunction<any, unknown>)[] = [
+			pkg=>this.runPackageLifecycle(pkg, 'preversion').then(()=>pkg),
+			// manifest may be mutated by any previous lifecycle
+			pkg=>pkg.refresh(),
+			pkg=>{
+				// set new version
+				pkg.version = this.updatesVersions.get(pkg.name)
+				// update pkg dependencies
+				for (const [depName, resolved] of this.packageGraph.get(pkg.name).localDependencies) {
+					const depVersion = this.updatesVersions.get(depName)
+					if (depVersion && resolved.type !== 'directory') {
+						// don't overwrite local file: specifiers, they only change during publish
+						pkg.updateLocalDependency(resolved, depVersion, this.savePrefix)
+					}
+				}
+				return Promise.all([updateLockfileVersion(pkg), pkg.serialize()]).then(([lockfilePath])=>{
+					// commit the updated manifest
+					changedFiles.add(pkg.manifestLocation)
+					if (lockfilePath) {
+						changedFiles.add(lockfilePath)
+					}
+					return pkg
+				})
+			},
+			pkg=>this.runPackageLifecycle(pkg, 'version').then(()=>pkg),
+		]
+		if (conventionalCommits && changelog) {
+			// we can now generate the Changelog, based on the
+			// the updated version that we're about to release.
+			const type = independentVersions ? 'independent' : 'fixed'
+			actions.push(pkg=>
+				ConventionalCommitUtilities.updateChangelog(pkg, type, {
+					changelogPreset,
+					rootPath,
+					tagPrefix: this.tagPrefix,
+				}).then(({ logPath, newEntry })=>{
+					// commit the updated changelog
+					changedFiles.add(logPath)
+					// add release notes
+					if (independentVersions) {
+						this.releaseNotes.push({
+							name: pkg.name,
+							notes: newEntry,
+						})
+					}
+					return pkg
+				})
+			)
+		}
+		const mapUpdate = pPipe(...actions)
+		chain = chain.then(()=>
+			runTopologically(this.packagesToVersion, mapUpdate, {
+				concurrency: this.concurrency,
+				rejectCycles: this.options.rejectCycles,
+			})
+		)
+		if (!independentVersions) {
+			this.project.version = this.globalVersion
+			if (conventionalCommits && changelog) {
+				chain = chain.then(()=>
+					ConventionalCommitUtilities.updateChangelog(this.project.manifest, 'root', {
+						changelogPreset,
+						rootPath,
+						tagPrefix: this.tagPrefix,
+						version: this.globalVersion,
+					}).then(({ logPath, newEntry })=>{
+						// commit the updated changelog
+						changedFiles.add(logPath)
+						// add release notes
+						this.releaseNotes.push({
+							name: 'fixed',
+							notes: newEntry,
+						})
+					})
+				)
+			}
+			chain = chain.then(()=>
+				this.project.serializeConfig().then(lernaConfigLocation=>{
+					// commit the version update
+					changedFiles.add(lernaConfigLocation)
+				})
+			)
+		}
+		if (!this.hasRootedLeaf) {
+			// exec version lifecycle in root (after all updates)
+			chain = chain.then(()=>this.runRootLifecycle('version'))
+		}
+		if (this.commitAndTag) {
+			chain = chain.then(
+				()=>{
+					this.packagesToVersion.map(pkg=>{
+						const execOpts = this.execOptsPkg(pkg)
+						const { cwd } = execOpts
+						console.debug('debug|1', { execOpts, pkg })
+						return gitAdd(
+							Array.from(changedFiles)
+								.filter((file:string) => !file.indexOf(cwd)),
+							execOpts)
+					})
+				}
+			)
+		}
+		return chain
+	}
+	execOptsPkg(pkg) {
+		return Object.assign({}, this.execOpts, { cwd: pkg.location })
+	}
+	async gitCommitAndTagVersionForUpdates() {
+		const subject = this.options.message || 'Publish'
+		const promises = this.packagesToVersion.map(async pkg=>{
+			const tag = `${pkg.name}@${this.updatesVersions.get(pkg.name)}`
+			const message = `${subject}${os.EOL}${os.EOL} - ${tag}`
+			const execOpts = this.execOptsPkg(pkg)
+			await gitCommit(message, this.gitOpts, execOpts)
+			await gitTag(tag, this.gitOpts, execOpts)
+			return tag
+		})
+		this.tags = await Promise.all(promises)
+		return this.tags
+	}
+	async gitCommitAndTagVersion() {
+		const version = this.globalVersion
+		const tag = `${this.tagPrefix}${version}`
 		const message =
 			this.options.message
-			? (
-				this.options.message
-					.replace(/%s/g, tag)
-					.replace(/%v/g, version)
-			)
+			? this.options.message.replace(/%s/g, tag).replace(/%v/g, version)
 			: tag
-		await gitCommit(message, this.gitOpts, this.execOpts)
-		await gitTag(tag, this.gitOpts, this.execOpts)
-		await this.runPackageLifecycle(this.pkg, 'postversion')
-		// await this.runRootLifecycle(this.pkg, 'postversion')
+		const promises = this.packagesToVersion.map(async pkg=>{
+			const execOpts = this.execOptsPkg(pkg)
+			await gitCommit(message, this.gitOpts, execOpts)
+			await gitTag(tag, this.gitOpts, execOpts)
+			return tag
+		})
+		await Promise.all(promises)
+		this.tags = [tag]
+		return this.tags
+	}
+	async gitPushToRemote() {
+		this.logger.info('git', 'Pushing tags...')
+		return this.packagesToVersion.map(pkg=>{
+			const execOpts = this.execOptsPkg(pkg)
+			return gitPush(this.gitRemote, getCurrentBranch(execOpts), execOpts)
+		})
 	}
 }
 class PublishSubmoduleCommand extends PublishCommand {

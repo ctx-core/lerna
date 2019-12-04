@@ -1,6 +1,6 @@
 {
 	"name": "@ctx-core/lerna",
-	"version": "2.1.0",
+	"version": "2.2.0",
 	"description": "ctx-core lerna",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
@@ -24,16 +24,24 @@
 	},
 	"devDependencies": {
 		"@ctx-core/rollup": "^8.2.11",
+		"@lerna/check-working-tree": "^3.16.5",
 		"@lerna/cli": "^3.18.5",
-		"@lerna/command": "^3.18.5",
+		"@lerna/collect-updates": "^3.18.0",
+		"@lerna/conventional-commits": "^3.18.5",
+		"@lerna/describe-ref": "^3.16.5",
 		"@lerna/npm-conf": "^3.16.0",
 		"@lerna/npm-publish": "^3.18.5",
 		"@lerna/pack-directory": "^3.16.4",
 		"@lerna/publish": "^3.18.5",
 		"@lerna/run-lifecycle": "^3.16.2",
 		"@lerna/run-topologically": "^3.18.5",
+		"@lerna/validation-error": "^3.13.0",
 		"@lerna/version": "^3.18.5",
-		"lerna": "^3.19.0"
+		"dedent": "^0.7.0",
+		"lerna": "^3.19.0",
+		"npmlog": "^4.1.2",
+		"p-pipe": "^3.0.0",
+		"p-waterfall": "^2.1.0"
 	},
 	"gitHead": "ecded533c5d9946e2d9dafa39dbc95ce3e38ad93"
 }
