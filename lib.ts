@@ -19,6 +19,7 @@ import getPackagesForOption from '@lerna/collect-updates/lib/get-packages-for-op
 import hasTags from '@lerna/collect-updates/lib/has-tags'
 import makeDiffPredicate from '@lerna/collect-updates/lib/make-diff-predicate'
 import ConventionalCommitUtilities from '@lerna/conventional-commits'
+import collectUncommitted from '@lerna/collect-uncommitted'
 import checkWorkingTree from '@lerna/check-working-tree'
 import describeRef from '@lerna/describe-ref'
 import runTopologically from '@lerna/run-topologically'
@@ -309,8 +310,10 @@ class VersionSubmoduleCommand extends VersionCommand {
 			const tag = `${pkg.name}@${this.updatesVersions.get(pkg.name)}`
 			const message = `${subject}${os.EOL}${os.EOL} - ${tag}`
 			const execOpts = this.execOptsPkg(pkg)
-			await gitAdd(['package.json'], execOpts)
-			await gitCommit(message, this.gitOpts, execOpts)
+			if (await collectUncommitted(execOpts).length) {
+				await gitAdd(['package.json'], execOpts)
+				await gitCommit(message, this.gitOpts, execOpts)
+			}
 			await gitTag(tag, this.gitOpts, execOpts)
 			return tag
 		})
@@ -326,8 +329,10 @@ class VersionSubmoduleCommand extends VersionCommand {
 			: tag
 		const promises = this.packageGraph.rawPackageList.map(async pkg=>{
 			const execOpts = this.execOptsPkg(pkg)
-			await gitAdd(['package.json'], execOpts)
-			await gitCommit(message, this.gitOpts, execOpts)
+			if (await collectUncommitted(execOpts).length) {
+				await gitAdd(['package.json'], execOpts)
+				await gitCommit(message, this.gitOpts, execOpts)
+			}
 			await gitTag(tag, this.gitOpts, execOpts)
 			return tag
 		})
