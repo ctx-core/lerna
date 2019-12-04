@@ -1,6 +1,6 @@
 {
 	"name": "@ctx-core/lerna",
-	"version": "2.3.6",
+	"version": "2.3.7",
 	"description": "ctx-core lerna",
 	"scripts": {
 		"build": "npm run clean && npm run compile",
