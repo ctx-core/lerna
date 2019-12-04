@@ -13,7 +13,11 @@ import getCurrentSHA from '@lerna/publish/lib/get-current-sha'
 import getCurrentTags from '@lerna/publish/lib/get-current-tags'
 import getTaggedPackages from '@lerna/publish/lib/get-tagged-packages'
 import { createRunner } from '@lerna/run-lifecycle'
-import collectUpdates from '@lerna/collect-updates'
+import collectDependents from '@lerna/collect-updates/lib/collect-dependents'
+import collectPackages from '@lerna/collect-updates/lib/collect-packages'
+import getPackagesForOption from '@lerna/collect-updates/lib/get-packages-for-option'
+import hasTags from '@lerna/collect-updates/lib/has-tags'
+import makeDiffPredicate from '@lerna/collect-updates/lib/make-diff-predicate'
 import ConventionalCommitUtilities from '@lerna/conventional-commits'
 import checkWorkingTree from '@lerna/check-working-tree'
 import describeRef from '@lerna/describe-ref'
@@ -76,11 +80,13 @@ class VersionSubmoduleCommand extends VersionCommand {
 		}
 		const updatesA2 = await Promise.all(
 			this.packageGraph.rawPackageList.map(
-				pkg=>{
-					return collectUpdates(
-						[pkg],
+				async (pkg)=>{
+					const execOpts = this.execOptsPkg(pkg)
+					return await collectUpdatesSubmodule(
+						pkg,
+						this.packageGraph.rawPackageList,
 						this.packageGraph,
-						this.execOptsPkg(pkg),
+						execOpts,
 						this.options
 					)
 				}
@@ -88,6 +94,8 @@ class VersionSubmoduleCommand extends VersionCommand {
 		)
 		this.updates =
 			[].concat(...updatesA2)
+				.filter((value, idx, self)=>
+					self.indexOf(value) === idx)
 				.filter(node=>{
 					if (!node.version) {
 						// a package may be unversioned only if it is private
@@ -164,7 +172,7 @@ class VersionSubmoduleCommand extends VersionCommand {
 		}
 		if (this.createRelease) {
 			this.logger.info('execute', 'Creating releases...')
-			this.packagesToVersion.forEach(pkg=>{
+			this.packageGraph.forEach(pkg=>{
 				tasks.push(()=>
 					createRelease(
 						this.options.createRelease,
@@ -186,20 +194,18 @@ class VersionSubmoduleCommand extends VersionCommand {
 			}
 		})
 	}
-	updatePackageVersions() {
+	async updatePackageVersions() {
 		const { conventionalCommits, changelogPreset, changelog = true } = this.options
 		const independentVersions = this.project.isIndependent()
 		const rootPath = this.project.manifest.location
 		const changedFiles = new Set()
-		// my kingdom for async await :(
-		let chain = Promise.resolve()
 		// preversion:  Run BEFORE bumping the package version.
 		// version:     Run AFTER bumping the package version, but BEFORE commit.
 		// postversion: Run AFTER bumping the package version, and AFTER commit.
 		// @see https://docs.npmjs.com/misc/scripts
 		if (!this.hasRootedLeaf) {
 			// exec preversion lifecycle in root (before all updates)
-			chain = chain.then(()=>this.runRootLifecycle('preversion'))
+			await this.runRootLifecycle('preversion')
 		}
 		const actions:(pPipe.UnaryFunction<any, unknown>)[] = [
 			pkg=>this.runPackageLifecycle(pkg, 'preversion').then(()=>pkg),
@@ -251,65 +257,55 @@ class VersionSubmoduleCommand extends VersionCommand {
 			)
 		}
 		const mapUpdate = pPipe(...actions)
-		chain = chain.then(()=>
-			runTopologically(this.packagesToVersion, mapUpdate, {
-				concurrency: this.concurrency,
-				rejectCycles: this.options.rejectCycles,
-			})
-		)
+		await runTopologically(this.packagesToVersion, mapUpdate, {
+			concurrency: this.concurrency,
+			rejectCycles: this.options.rejectCycles,
+		})
 		if (!independentVersions) {
 			this.project.version = this.globalVersion
 			if (conventionalCommits && changelog) {
-				chain = chain.then(()=>
-					ConventionalCommitUtilities.updateChangelog(this.project.manifest, 'root', {
-						changelogPreset,
-						rootPath,
-						tagPrefix: this.tagPrefix,
-						version: this.globalVersion,
-					}).then(({ logPath, newEntry })=>{
-						// commit the updated changelog
-						changedFiles.add(logPath)
-						// add release notes
-						this.releaseNotes.push({
-							name: 'fixed',
-							notes: newEntry,
-						})
+				await ConventionalCommitUtilities.updateChangelog(this.project.manifest, 'root', {
+					changelogPreset,
+					rootPath,
+					tagPrefix: this.tagPrefix,
+					version: this.globalVersion,
+				}).then(({ logPath, newEntry })=>{
+					// commit the updated changelog
+					changedFiles.add(logPath)
+					// add release notes
+					this.releaseNotes.push({
+						name: 'fixed',
+						notes: newEntry,
 					})
-				)
-			}
-			chain = chain.then(()=>
-				this.project.serializeConfig().then(lernaConfigLocation=>{
-					// commit the version update
-					changedFiles.add(lernaConfigLocation)
 				})
-			)
+			}
+			await this.project.serializeConfig().then(lernaConfigLocation=>{
+				// commit the version update
+				changedFiles.add(lernaConfigLocation)
+			})
 		}
 		if (!this.hasRootedLeaf) {
 			// exec version lifecycle in root (after all updates)
-			chain = chain.then(()=>this.runRootLifecycle('version'))
+			await this.runRootLifecycle('version')
 		}
 		if (this.commitAndTag) {
-			chain = chain.then(
-				()=>{
-					this.packagesToVersion.map(pkg=>{
-						const execOpts = this.execOptsPkg(pkg)
-						const { cwd } = execOpts
-						return gitAdd(
-							Array.from(changedFiles)
-								.filter((file:string)=>!file.indexOf(cwd)),
-							execOpts)
-					})
-				}
+			await Promise.all(this.packageGraph.rawPackageList.map(pkg=>{
+					const execOpts = this.execOptsPkg(pkg)
+					const { cwd } = execOpts
+					return gitAdd(
+						Array.from(changedFiles)
+							.filter((file:string)=>!file.indexOf(`${cwd}/`)),
+						execOpts)
+				})
 			)
 		}
-		return chain
 	}
 	execOptsPkg(pkg) {
 		return Object.assign({}, this.execOpts, { cwd: pkg.location })
 	}
 	async gitCommitAndTagVersionForUpdates() {
 		const subject = this.options.message || 'Publish'
-		const promises = this.packagesToVersion.map(async pkg=>{
+		const promises = this.packageGraph.rawPackageList.map(async pkg=>{
 			const tag = `${pkg.name}@${this.updatesVersions.get(pkg.name)}`
 			const message = `${subject}${os.EOL}${os.EOL} - ${tag}`
 			const execOpts = this.execOptsPkg(pkg)
@@ -328,7 +324,7 @@ class VersionSubmoduleCommand extends VersionCommand {
 			this.options.message
 			? this.options.message.replace(/%s/g, tag).replace(/%v/g, version)
 			: tag
-		const promises = this.packagesToVersion.map(async pkg=>{
+		const promises = this.packageGraph.rawPackageList.map(async pkg=>{
 			const execOpts = this.execOptsPkg(pkg)
 			await gitAdd(['package.json'], execOpts)
 			await gitCommit(message, this.gitOpts, execOpts)
@@ -341,7 +337,7 @@ class VersionSubmoduleCommand extends VersionCommand {
 	}
 	async gitPushToRemote() {
 		this.logger.info('git', 'Pushing tags...')
-		return this.packagesToVersion.map(pkg=>{
+		return this.packageGraph.rawPackageList.map(pkg=>{
 			const execOpts = this.execOptsPkg(pkg)
 			return gitPush(this.gitRemote, getCurrentBranch(execOpts), execOpts)
 		})
@@ -424,43 +420,39 @@ class PublishSubmoduleCommand extends PublishCommand {
 				this.logger.warn('lifecycle', 'Skipping root %j because it has already been called', stage)
 			}
 			: stage=>this.runPackageLifecycle(this.project.manifest, stage)
-		let chain:Promise<any> = Promise.resolve()
-		if (this.options.bump === 'from-git') {
-			chain = chain.then(()=>this.detectFromGit())
-		} else if (this.options.bump === 'from-package') {
-			chain = chain.then(()=>this.detectFromPackage())
-		} else if (this.options.canary) {
-			chain = chain.then(()=>this.detectCanaryVersions())
-		} else {
-			chain = chain.then(()=>new VersionSubmoduleCommand(this.argv))
+		const result =
+			this.options.bump === 'from-git'
+			? await this.detectFromGit()
+			: this.options.bump === 'from-package'
+				? await this.detectFromPackage()
+				: this.options.canary
+					? await this.detectCanaryVersions()
+					: await new VersionSubmoduleCommand(this.argv)
+		if (!result) {
+			// early return from nested VersionCommand
+			return false
 		}
-		return chain.then(result=>{
-			if (!result) {
-				// early return from nested VersionCommand
-				return false
+		if (!result.updates.length) {
+			this.logger.success('No changed packages to publish')
+			// still exits zero, aka "ok"
+			return false
+		}
+		this.updates = result.updates
+		this.updatesVersions = new Map(result.updatesVersions)
+		this.packagesToPublish = this.updates.map(({ pkg })=>pkg).filter(pkg=>!pkg.private)
+		if (this.options.contents) {
+			// globally override directory to publish
+			for (const pkg of this.packagesToPublish) {
+				pkg.contents = this.options.contents
 			}
-			if (!result.updates.length) {
-				this.logger.success('No changed packages to publish')
-				// still exits zero, aka "ok"
-				return false
-			}
-			this.updates = result.updates
-			this.updatesVersions = new Map(result.updatesVersions)
-			this.packagesToPublish = this.updates.map(({ pkg })=>pkg).filter(pkg=>!pkg.private)
-			if (this.options.contents) {
-				// globally override directory to publish
-				for (const pkg of this.packagesToPublish) {
-					pkg.contents = this.options.contents
-				}
-			}
-			if (result.needsConfirmation) {
-				// only confirm for --canary, bump === "from-git",
-				// or bump === "from-package", as VersionCommand
-				// has its own confirmation prompt
-				return this.confirmPublish()
-			}
-			return true
-		})
+		}
+		if (result.needsConfirmation) {
+			// only confirm for --canary, bump === "from-git",
+			// or bump === "from-package", as VersionCommand
+			// has its own confirmation prompt
+			return this.confirmPublish()
+		}
+		return true
 	}
 	execOptsPkg(pkg) {
 		return Object.assign({}, this.execOpts, { cwd: pkg.location })
@@ -518,32 +510,29 @@ class PublishSubmoduleCommand extends PublishCommand {
 		} = this.options
 		// "prerelease" and "prepatch" are identical, for our purposes
 		const release = bump.startsWith('pre') ? bump.replace('release', 'patch') : `pre${bump}`
-		let chain:Promise<any> = Promise.resolve()
 		// attempting to publish a canary release with local changes is not allowed
-		chain = chain.then(()=>this.verifyWorkingTreeClean())
+		await this.verifyWorkingTreeClean()
 		// find changed packages since last release, if any
-		chain = chain.then(async ()=>{
-				const updatesA2 = await Promise.all(
-					this.packageGraph.rawPackageList.map(
-						pkg=>{
-							return collectUpdates(
-								[pkg],
-								this.packageGraph,
-								this.execOptsPkg(pkg),
-								{
-									bump: 'prerelease',
-									canary: true,
-									ignoreChanges,
-									forcePublish,
-									includeMergedTags,
-								}
-							)
+		const updatesA2 = await Promise.all(
+			this.packageGraph.rawPackageList.map(
+				pkg=>{
+					return collectUpdatesSubmodule(
+						pkg,
+						this.packageGraph.rawPackageList,
+						this.packageGraph,
+						this.execOptsPkg(pkg),
+						{
+							bump: 'prerelease',
+							canary: true,
+							ignoreChanges,
+							forcePublish,
+							includeMergedTags,
 						}
 					)
-				)
-				return [].concat(...updatesA2)
-			}
+				}
+			)
 		)
+		const updates = [].concat(...updatesA2)
 		const makeVersion = ({ lastVersion, refCount, sha })=>{
 			// the next version is bumped without concern for preid or current index
 			const nextVersion = semver.inc(lastVersion, release.replace('pre', ''))
@@ -551,54 +540,43 @@ class PublishSubmoduleCommand extends PublishCommand {
 			// and build metadata is always ignored when comparing dependency ranges
 			return `${nextVersion}-${preid}.${Math.max(0, refCount - 1)}+${sha}`
 		}
+		let updatesVersions
 		if (this.project.isIndependent()) {
 			// each package is described against its tags only
-			chain = chain.then(updates=>
-				pMap(updates, ({ pkg })=>
-					describeRef(
-						{
-							match: `${pkg.name}@*`,
-							cwd: pkg.location,
-						},
-						includeMergedTags
+			updatesVersions = await pMap(updates, ({ pkg })=>
+				describeRef(
+					{
+						match: `${pkg.name}@*`,
+						cwd: pkg.location,
+					},
+					includeMergedTags
+				)
+					.then(({ lastVersion = pkg.version, refCount, sha })=>
+						// an unpublished package will have no reachable git tag
+						makeVersion({ lastVersion, refCount, sha })
 					)
-						.then(({ lastVersion = pkg.version, refCount, sha })=>
-							// an unpublished package will have no reachable git tag
-							makeVersion({ lastVersion, refCount, sha })
-						)
-						.then(version=>[pkg.name, version])
-				).then(updatesVersions=>({
-					updates,
-					updatesVersions,
-				}))
+					.then(version=>[pkg.name, version])
 			)
 		} else {
 			// all packages are described against the last tag
-			chain = chain.then(async updates=>{
-					return Promise.all(updates.map(({ pkg })=>{
-						const { cwd } = this.execOptsPkg(pkg)
-						return describeRef(
-							{
-								match: `${this.tagPrefix}*.*.*`,
-								cwd,
-							},
-							includeMergedTags
-						)
-							.then(makeVersion)
-							.then(version=>updates.map(({ pkg })=>[pkg.name, version]))
-							.then(updatesVersions=>({
-								updates,
-								updatesVersions,
-							}))
-					}))
-				}
-			)
+			updatesVersions = await Promise.all(
+				updates.map(async ({ pkg })=>{
+					const { cwd } = this.execOptsPkg(pkg)
+					const version = await describeRef(
+						{
+							match: `${this.tagPrefix}*.*.*`,
+							cwd,
+						},
+						includeMergedTags
+					).then(makeVersion)
+					return updates.map(({ pkg })=>[pkg.name, version])
+				}))
 		}
-		return chain.then(({ updates, updatesVersions })=>({
+		return {
 			updates,
 			updatesVersions,
 			needsConfirmation: true,
-		}))
+		}
 	}
 	async resetChanges() {
 		const gitCheckout_ = (dirtyManifests, execOpts)=>{
@@ -620,4 +598,97 @@ class PublishSubmoduleCommand extends PublishCommand {
 			})
 		])
 	}
+}
+async function collectUpdatesSubmodule(submodulePackage, filteredPackages, packageGraph, execOpts, commandOptions) {
+	const { forcePublish, conventionalCommits, conventionalGraduate, excludeDependents } = commandOptions
+	// If --conventional-commits and --conventional-graduate are both set, ignore --force-publish
+	const useConventionalGraduate = conventionalCommits && conventionalGraduate
+	const forced = getPackagesForOption(useConventionalGraduate ? conventionalGraduate : forcePublish)
+	const packages =
+		filteredPackages.length === packageGraph.size
+		? packageGraph
+		: new Map(filteredPackages.map(({ name })=>[name, packageGraph.get(name)]))
+	let committish = commandOptions.since
+	if (hasTags(execOpts)) {
+		// describe the last annotated tag in the current branch
+		const { sha, refCount, lastTagName } = describeRef.sync(execOpts, commandOptions.includeMergedTags)
+		// TODO: warn about dirty tree?
+		if (refCount === '0' && forced.size === 0 && !committish) {
+			// no commits since previous release
+			log.notice('', 'Current HEAD is already released, skipping change detection.')
+			return []
+		}
+		if (commandOptions.canary) {
+			// if it's a merge commit, it will return all the commits that were part of the merge
+			// ex: If `ab7533e` had 2 commits, ab7533e^..ab7533e would contain 2 commits + the merge commit
+			committish = `${sha}^..${sha}`
+		} else if (!committish) {
+			// if no tags found, this will be undefined and we'll use the initial commit
+			committish = lastTagName
+		}
+	}
+	if (forced.size) {
+		// "warn" might seem a bit loud, but it is appropriate for logging anything _forced_
+		log.warn(
+			useConventionalGraduate ? 'conventional-graduate' : 'force-publish',
+			forced.has('*') ? 'all packages' : Array.from(forced.values()).join('\n')
+		)
+	}
+	if (useConventionalGraduate) {
+		// --conventional-commits --conventional-graduate
+		if (forced.has('*')) {
+			log.info('', 'Graduating all prereleased packages')
+		} else {
+			log.info('', 'Graduating prereleased packages')
+		}
+	} else if (!committish || forced.has('*')) {
+		// --force-publish or no tag
+		log.info('', 'Assuming all packages changed')
+		return collectPackages(packages, {
+			onInclude: name=>log.verbose('updated', name),
+			excludeDependents,
+		})
+	}
+	log.info('', `Looking for changed packages since ${committish}`)
+	const hasDiff = makeDiffPredicate(committish, execOpts, commandOptions.ignoreChanges)
+	const needsBump =
+		!commandOptions.bump || commandOptions.bump.startsWith('pre')
+		? ()=>false
+		: /* skip packages that have not been previously prereleased */
+		node=>node.prereleaseId
+	const isForced = (node, name)=>
+		(forced.has('*') || forced.has(name)) && (useConventionalGraduate ? node.prereleaseId : true)
+	return collectPackagesSubmodule(submodulePackage, packages, {
+		isCandidate: (node, name)=>isForced(node, name) || needsBump(node) || hasDiff(node),
+		onInclude: name=>log.verbose('updated', name),
+		excludeDependents,
+	})
+}
+async function collectPackagesSubmodule(
+	submodulePackage,
+	packages,
+	{
+		isCandidate = (_node, _name)=>true,
+		onInclude,
+		excludeDependents
+	}
+) {
+	const candidates = new Set()
+	if (isCandidate(submodulePackage, submodulePackage.name)) {
+		candidates.add(packages.get(submodulePackage.name))
+	}
+	if (!excludeDependents) {
+		collectDependents(candidates).forEach(node=>candidates.add(node))
+	}
+	// The result should always be in the same order as the input
+	const updates = []
+	packages.forEach((node, name)=>{
+		if (candidates.has(node)) {
+			if (onInclude) {
+				onInclude(name)
+			}
+			updates.push(node)
+		}
+	})
+	return updates
 }
