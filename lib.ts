@@ -313,6 +313,7 @@ class VersionSubmoduleCommand extends VersionCommand {
 			const tag = `${pkg.name}@${this.updatesVersions.get(pkg.name)}`
 			const message = `${subject}${os.EOL}${os.EOL} - ${tag}`
 			const execOpts = this.execOptsPkg(pkg)
+			await gitAdd(['package.json'], execOpts)
 			await gitCommit(message, this.gitOpts, execOpts)
 			await gitTag(tag, this.gitOpts, execOpts)
 			return tag
@@ -329,6 +330,7 @@ class VersionSubmoduleCommand extends VersionCommand {
 			: tag
 		const promises = this.packagesToVersion.map(async pkg=>{
 			const execOpts = this.execOptsPkg(pkg)
+			await gitAdd(['package.json'], execOpts)
 			await gitCommit(message, this.gitOpts, execOpts)
 			await gitTag(tag, this.gitOpts, execOpts)
 			return tag
