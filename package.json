@@ -3,7 +3,16 @@
 	"version": "2.3.1",
 	"description": "ctx-core lerna",
 	"scripts": {
+		"build": "npm run clean && npm run compile",
+		"clean": "rm -f tsconfig.tsbuildinfo",
+		"compile": "tsc -b",
+		"prepublishOnly": "npm run compile",
 		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"bin": {
+		"dir-toposort.sh": "bin/dir-toposort.sh",
+		"lerna--submodules.js": "bin/lerna--submodules.js",
+		"lerna-tsc-clean.sh": "bin/lerna-tsc-clean.sh"
 	},
 	"repository": {
 		"type": "git",
