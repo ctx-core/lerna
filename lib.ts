@@ -307,14 +307,14 @@ class VersionSubmoduleCommand extends VersionCommand {
 	async gitCommitAndTagVersionForUpdates() {
 		const subject = this.options.message || 'Publish'
 		const promises = this.packageGraph.rawPackageList.map(async pkg=>{
-			const tag = `${pkg.name}@${this.updatesVersions.get(pkg.name)}`
+			const tag = `${pkg.name}@${pkg.version}`
 			const message = `${subject}${os.EOL}${os.EOL} - ${tag}`
 			const execOpts = this.execOptsPkg(pkg)
-			if (await collectUncommitted(execOpts).length) {
+			if ((await collectUncommitted(execOpts)).length) {
 				await gitAdd(['package.json'], execOpts)
 				await gitCommit(message, this.gitOpts, execOpts)
+				await gitTag(tag, this.gitOpts, execOpts)
 			}
-			await gitTag(tag, this.gitOpts, execOpts)
 			return tag
 		})
 		this.tags = await Promise.all(promises)
@@ -329,11 +329,11 @@ class VersionSubmoduleCommand extends VersionCommand {
 			: tag
 		const promises = this.packageGraph.rawPackageList.map(async pkg=>{
 			const execOpts = this.execOptsPkg(pkg)
-			if (await collectUncommitted(execOpts).length) {
+			if ((await collectUncommitted(execOpts)).length) {
 				await gitAdd(['package.json'], execOpts)
 				await gitCommit(message, this.gitOpts, execOpts)
+				await gitTag(tag, this.gitOpts, execOpts)
 			}
-			await gitTag(tag, this.gitOpts, execOpts)
 			return tag
 		})
 		await Promise.all(promises)
