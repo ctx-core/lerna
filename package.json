@@ -52,7 +52,7 @@
 		"p-map": "^4.0.0",
 		"p-pipe": "^3.0.0",
 		"p-waterfall": "^2.1.0",
-		"semver": "^7.2.1"
+		"semver": "^7.2.2"
 	},
 	"gitHead": "a962d172dc7b53268221fae2d11e7c517822faea"
 }
