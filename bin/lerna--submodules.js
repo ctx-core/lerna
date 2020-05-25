@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import cli from '@lerna/cli'
-import { lerna_version__submodules, lerna_publish__submodules } from '../lib'
+import { lerna_version__submodules, lerna_publish__submodules } from '@ctx-core/lerna'
 main()
 async function main() {
 	const version_cli = await import('@lerna/version/command')
