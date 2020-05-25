@@ -12,7 +12,7 @@
 	},
 	"bin": {
 		"pwd--packages": "bin/pwd--packages.sh",
-		"lerna--submodules": "bin/lerna--submodules.js",
+		"lerna--submodules": "bin/lerna--submodules.cjs",
 		"tsc-clean--packages": "bin/tsc-clean--packages.sh"
 	},
 	"repository": {
@@ -54,5 +54,5 @@
 		"p-waterfall": "^2.1.0",
 		"semver": "^7.3.2"
 	},
-	"gitHead": "a962d172dc7b53268221fae2d11e7c517822faea"
+	"gitHead": "f4ead0d3582f13f8294e500fbe70995f66930ad6"
 }

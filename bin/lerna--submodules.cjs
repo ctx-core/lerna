@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-import cli from '@lerna/cli'
-import {
-	lerna_version__submodules,
-	lerna_publish__submodules,
-} from '../lib.js'
+const cli = require('@lerna/cli')
 main()
 async function main() {
-	const version_cli = (await import('@lerna/version/command.js')).default
-	const publish_cli = (await import('@lerna/publish/command.js')).default
+	const {
+		lerna_version__submodules,
+		lerna_publish__submodules,
+	} = await import('../lib.js')
+	const version_cli = require('@lerna/version/command.js')
+	const publish_cli = require('@lerna/publish/command.js')
 	cli()
 		.command(
 			version_cli.command,
