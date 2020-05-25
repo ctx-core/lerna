@@ -6,30 +6,30 @@ import pMap from 'p-map'
 import pPipe from 'p-pipe'
 import semver from 'semver'
 import pWaterfall from 'p-waterfall'
-import { VersionCommand } from '@lerna/version'
-import { PublishCommand } from '@lerna/publish'
-import gitCheckout from '@lerna/publish/lib/git-checkout'
-import getCurrentSHA from '@lerna/publish/lib/get-current-sha'
-import getCurrentTags from '@lerna/publish/lib/get-current-tags'
-import getTaggedPackages from '@lerna/publish/lib/get-tagged-packages'
-import { createRunner } from '@lerna/run-lifecycle'
-import collectDependents from '@lerna/collect-updates/lib/collect-dependents'
-import collectPackages from '@lerna/collect-updates/lib/collect-packages'
-import getPackagesForOption from '@lerna/collect-updates/lib/get-packages-for-option'
-import hasTags from '@lerna/collect-updates/lib/has-tags'
-import makeDiffPredicate from '@lerna/collect-updates/lib/make-diff-predicate'
+import version from '@lerna/version'
+import publish from '@lerna/publish'
+import gitCheckout from '@lerna/publish/lib/git-checkout.js'
+import getCurrentSHA from '@lerna/publish/lib/get-current-sha.js'
+import getCurrentTags from '@lerna/publish/lib/get-current-tags.js'
+import getTaggedPackages from '@lerna/publish/lib/get-tagged-packages.js'
+import runLifecycle from '@lerna/run-lifecycle'
+import collectDependents from '@lerna/collect-updates/lib/collect-dependents.js'
+import collectPackages from '@lerna/collect-updates/lib/collect-packages.js'
+import getPackagesForOption from '@lerna/collect-updates/lib/get-packages-for-option.js'
+import hasTags from '@lerna/collect-updates/lib/has-tags.js'
+import makeDiffPredicate from '@lerna/collect-updates/lib/make-diff-predicate.js'
 import ConventionalCommitUtilities from '@lerna/conventional-commits'
 import collectUncommitted from '@lerna/collect-uncommitted'
 import checkWorkingTree from '@lerna/check-working-tree'
 import describeRef from '@lerna/describe-ref'
 import runTopologically from '@lerna/run-topologically'
-import gitAdd from '@lerna/version/lib/git-add'
-import gitCommit from '@lerna/version/lib/git-commit'
-import gitTag from '@lerna/version/lib/git-tag'
-import createRelease from '@lerna/version/lib/create-release'
-import getCurrentBranch from '@lerna/version/lib/get-current-branch'
-import gitPush from '@lerna/version/lib/git-push'
-import { updateLockfileVersion } from '@lerna/version/lib/update-lockfile-version'
+import gitAdd from '@lerna/version/lib/git-add.js'
+import gitCommit from '@lerna/version/lib/git-commit.js'
+import gitTag from '@lerna/version/lib/git-tag.js'
+import createRelease from '@lerna/version/lib/create-release.js'
+import getCurrentBranch from '@lerna/version/lib/get-current-branch.js'
+import gitPush from '@lerna/version/lib/git-push.js'
+import updateLockfileVersion from '@lerna/version/lib/update-lockfile-version.js'
 import ValidationError from '@lerna/validation-error'
 import npmConf from '@lerna/npm-conf'
 export async function lerna_version__submodules(argv) {
@@ -40,7 +40,7 @@ export async function lerna_publish__submodules(argv) {
 	const command = new PublishSubmoduleCommand(argv)
 	return await command.runner
 }
-class VersionSubmoduleCommand extends VersionCommand {
+class VersionSubmoduleCommand extends version.VersionCommand {
 	argv:any
 	runner:Promise<any>
 	options:any
@@ -124,7 +124,7 @@ class VersionSubmoduleCommand extends VersionCommand {
 		if (this.hasRootedLeaf && !this.composed) {
 			this.logger.info('version', 'rooted leaf detected, skipping synthetic root lifecycles')
 		}
-		this.runPackageLifecycle = createRunner(this.options)
+		this.runPackageLifecycle = runLifecycle.createRunner(this.options)
 		// don't execute recursively if run from a poorly-named script
 		this.runRootLifecycle =
 			/^(pre|post)?version$/.test(process.env.npm_lifecycle_event)
@@ -223,7 +223,7 @@ class VersionSubmoduleCommand extends VersionCommand {
 						pkg.updateLocalDependency(resolved, depVersion, this.savePrefix)
 					}
 				}
-				return Promise.all([updateLockfileVersion(pkg), pkg.serialize()]).then(([lockfilePath])=>{
+				return Promise.all([updateLockfileVersion.updateLockfileVersion(pkg), pkg.serialize()]).then(([lockfilePath])=>{
 					// commit the updated manifest
 					changedFiles.add(pkg.manifestLocation)
 					if (lockfilePath) {
@@ -348,7 +348,7 @@ class VersionSubmoduleCommand extends VersionCommand {
 		})
 	}
 }
-class PublishSubmoduleCommand extends PublishCommand {
+class PublishSubmoduleCommand extends publish.PublishCommand {
 	argv:any
 	options:any
 	execOpts:any
@@ -417,7 +417,7 @@ class PublishSubmoduleCommand extends PublishCommand {
 		if (this.hasRootedLeaf) {
 			this.logger.info('publish', 'rooted leaf detected, skipping synthetic root lifecycles')
 		}
-		this.runPackageLifecycle = createRunner(this.options)
+		this.runPackageLifecycle = runLifecycle.createRunner(this.options)
 		// don't execute recursively if run from a poorly-named script
 		this.runRootLifecycle =
 			/^(pre|post)?publish$/.test(process.env.npm_lifecycle_event)
