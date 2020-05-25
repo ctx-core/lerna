@@ -1,13 +1,14 @@
 #!/usr/bin/env node
+require = require('esm')(module)
 const cli = require('@lerna/cli')
+const {
+	lerna_version__submodules,
+	lerna_publish__submodules,
+} = require('../lib')
+const version_cli = require('@lerna/version/command')
+const publish_cli = require('@lerna/publish/command')
 main()
 async function main() {
-	const {
-		lerna_version__submodules,
-		lerna_publish__submodules,
-	} = await import('../lib.js')
-	const version_cli = require('@lerna/version/command.js')
-	const publish_cli = require('@lerna/publish/command.js')
 	cli()
 		.command(
 			version_cli.command,

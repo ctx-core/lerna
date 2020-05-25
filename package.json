@@ -2,7 +2,6 @@
 	"name": "@ctx-core/lerna",
 	"version": "3.0.11",
 	"description": "ctx-core lerna",
-	"type": "module",
 	"scripts": {
 		"build": "npm run clean && npm run compile",
 		"clean": "rm -f tsconfig.tsbuildinfo",
@@ -47,6 +46,7 @@
 		"@lerna/validation-error": "^3.13.0",
 		"@lerna/version": "^3.22.0",
 		"dedent": "^0.7.0",
+		"esm": "^3.2.25",
 		"lerna": "^3.22.0",
 		"npmlog": "^4.1.2",
 		"p-map": "^4.0.0",

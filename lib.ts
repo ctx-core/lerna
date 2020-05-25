@@ -697,3 +697,4 @@ async function collectPackagesSubmodule(
 	})
 	return updates
 }
+
