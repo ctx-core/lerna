@@ -12,7 +12,7 @@
 	},
 	"bin": {
 		"pwd--packages": "bin/pwd--packages.sh",
-		"lerna--submodules": "bin/lerna--submodules.js",
+		"lerna--submodules": "bin/lerna--submodules.cjs",
 		"tsc-clean--packages": "bin/tsc-clean--packages.sh"
 	},
 	"repository": {
