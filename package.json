@@ -2,6 +2,9 @@
 	"name": "@ctx-core/lerna",
 	"version": "3.0.12",
 	"description": "ctx-core lerna",
+	"main": "index.js",
+	"module": "index.js",
+	"types": "index.ts",
 	"scripts": {
 		"build": "npm run clean && npm run compile",
 		"clean": "rm -f tsconfig.tsbuildinfo",
