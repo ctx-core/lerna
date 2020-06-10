@@ -14,17 +14,11 @@ async function main() {
 			version_cli.command,
 			version_cli.describe,
 			version_cli.builder,
-			argv => {
-				console.debug('lerva--submodules|debug|1')
-				return lerna_version__submodules(argv)
-			})
+			lerna_version__submodules)
 		.command(
 			publish_cli.command,
 			publish_cli.describe,
 			publish_cli.builder,
-			argv => {
-				console.debug('lerva--submodules|debug|2')
-				return lerna_publish__submodules(argv)
-			})
+			lerna_publish__submodules)
 		.parse(process.argv.slice(2))
 }

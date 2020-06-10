@@ -41,7 +41,6 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 	}
 
 	async initialize() {
-		console.debug('initialize|debug|1')
 		if (!this.project.isIndependent()) {
 			this.logger.info("current version", this.project.version);
 		}

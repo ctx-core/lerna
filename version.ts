@@ -161,7 +161,6 @@ export class VersionSubmoduleCommand extends version.VersionCommand {
 			this.packageGraph.rawPackageList.map(
 				async (pkg) => {
 					const execOpts = this.execOptsPkg(pkg)
-					console.debug('initialize|updatesA2|debug|1')
 					return await collectUpdatesSubmodule(
 						pkg,
 						this.packageGraph.rawPackageList,
@@ -227,7 +226,6 @@ export class VersionSubmoduleCommand extends version.VersionCommand {
 		if (this.commitAndTag && this.gitOpts.amend !== true) {
 			this.packageGraph.forEach(pkg => {
 				const execOpts = this.execOptsPkg(pkg)
-				console.debug('initialize|packageGraps.forEach|debug|1')
 				const check = checkWorkingTree.mkThrowIfUncommitted(execOpts)
 				tasks.unshift(async () => {
 					try {
@@ -375,61 +373,33 @@ export class VersionSubmoduleCommand extends version.VersionCommand {
 			await this.runRootLifecycle('version')
 		}
 		if (this.commitAndTag) {
-			for (let pkg of this.packageGraph.rawPackageList) {
+			await Promise.all(this.packageGraph.rawPackageList.map(pkg => {
 					const execOpts = this.execOptsPkg(pkg)
 					const { cwd } = execOpts
-				console.debug('updatePackageVersions|debug|1', {
-					cwd,
-					execOpts,
-				})
-				console.debug(						Array.from(changedFiles)
-							.filter((file: string) => !file.indexOf(`${ cwd }/`)))
-					await gitAdd(
+					return gitAdd(
 						Array.from(changedFiles)
 							.filter((file: string) => !file.indexOf(`${ cwd }/`)),
 						{},
 						execOpts)
-			}
-			// await Promise.all(this.packageGraph.rawPackageList.map(pkg => {
-			// 		const execOpts = this.execOptsPkg(pkg)
-			// 		const { cwd } = execOpts
-			// 	console.debug('updatePackageVersions|debug|1', {
-			// 		cwd,
-			// 		execOpts,
-			// 	})
-			// 		return gitAdd(
-			// 			Array.from(changedFiles)
-			// 				.filter((file: string) => !file.indexOf(`${ cwd }/`)),
-			//			{},
-			// 			execOpts)
-			// 	})
-			// )
+				})
+			)
 		}
 	}
 
 	execOptsPkg(pkg) {
-		console.debug('execOptsPkg|debug|1', {
-			cwd: pkg.location,
-		})
 		return Object.assign({}, this.execOpts, { cwd: pkg.location })
 	}
 
 	async gitCommitAndTagVersionForUpdates() {
-		console.debug('gitCommitAndTagVersionForUpdates|debug|1')
 		const subject = this.options.message || 'Publish'
 		const promises = this.packageGraph.rawPackageList.map(async pkg => {
 			const tag = `${ pkg.name }@${ pkg.version }`
 			const message = `${ subject }${ os.EOL }${ os.EOL } - ${ tag }`
 			const execOpts = this.execOptsPkg(pkg)
-			console.debug('gitCommitAndTagVersionForUpdates|debug|2', execOpts)
 			if ((await collectUncommitted(execOpts)).length) {
-				console.debug('gitCommitAndTagVersionForUpdates|debug|2.1', execOpts)
 				await gitAdd(['package.json'], {}, execOpts)
-				console.debug('gitCommitAndTagVersionForUpdates|debug|2.2')
 				await gitCommit(message, this.gitOpts, execOpts)
-				console.debug('gitCommitAndTagVersionForUpdates|debug|2.3')
 				await gitTag(tag, this.gitOpts, execOpts)
-				console.debug('gitCommitAndTagVersionForUpdates|debug|2.4')
 			}
 			return tag
 		})
@@ -438,7 +408,6 @@ export class VersionSubmoduleCommand extends version.VersionCommand {
 	}
 
 	async gitCommitAndTagVersion() {
-		console.debug('gitCommitAndTagVersion|debug|1')
 		const version = this.globalVersion
 		const tag = `${ this.tagPrefix }${ version }`
 		const message =
@@ -447,7 +416,6 @@ export class VersionSubmoduleCommand extends version.VersionCommand {
 				: tag
 		const promises = this.packageGraph.rawPackageList.map(async pkg => {
 			const execOpts = this.execOptsPkg(pkg)
-			console.debug('gitCommitAndTagVersion|debug|1')
 			if ((await collectUncommitted(execOpts)).length) {
 				await gitAdd(['package.json'], {}, execOpts)
 				await gitCommit(message, this.gitOpts, execOpts)
@@ -464,7 +432,6 @@ export class VersionSubmoduleCommand extends version.VersionCommand {
 		this.logger.info('git', 'Pushing tags...')
 		return this.packageGraph.rawPackageList.map(pkg => {
 			const execOpts = this.execOptsPkg(pkg)
-			console.debug('gitPushToRemote|debug|1')
 			return gitPush(this.gitRemote, getCurrentBranch(execOpts), execOpts)
 		})
 	}
