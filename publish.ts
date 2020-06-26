@@ -285,7 +285,7 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 
 	async resetChanges() {
 		const gitCheckout_ = (dirtyManifests, execOpts) => {
-			return gitCheckout(dirtyManifests, execOpts).catch(err => {
+			return gitCheckout(dirtyManifests, {}, execOpts).catch(err => {
 				this.logger.silly('EGITCHECKOUT', err.message)
 				this.logger.notice('FYI', 'Unable to reset working tree changes, this probably isn\'t a git repo.')
 			})
