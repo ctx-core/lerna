@@ -284,6 +284,7 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 	}
 
 	async resetChanges() {
+		console.debug('resetChanges|debug|1')
 		const gitCheckout_ = (dirtyManifests, execOpts) => {
 			return gitCheckout(dirtyManifests, execOpts).catch(err => {
 				this.logger.silly('EGITCHECKOUT', err.message)
