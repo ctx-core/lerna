@@ -6,6 +6,19 @@ import hasTags from '@lerna/collect-updates/lib/has-tags.js'
 import makeDiffPredicate from '@lerna/collect-updates/lib/make-diff-predicate.js'
 import describeRef from '@lerna/describe-ref'
 
+import { VersionSubmoduleCommand } from './version'
+import { PublishSubmoduleCommand } from './publish'
+
+export async function lerna_version__submodules(argv) {
+	const command = new VersionSubmoduleCommand(argv)
+	return await command.runner
+}
+
+export async function lerna_publish__submodules(argv) {
+	const command = new PublishSubmoduleCommand(argv)
+	return await command.runner
+}
+
 export async function collectUpdatesSubmodule(submodulePackage, filteredPackages, packageGraph, execOpts, commandOptions) {
 	const { forcePublish, conventionalCommits, conventionalGraduate, excludeDependents } = commandOptions
 	// If --conventional-commits and --conventional-graduate are both set, ignore --force-publish
