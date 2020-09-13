@@ -10,7 +10,7 @@
 		"clean": "rm -f tsconfig.tsbuildinfo",
 		"compile": "tsc -b",
 		"prepublishOnly": "npm run compile",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"exec": "$@"
 	},
 	"bin": {
 		"pwd--packages": "bin/pwd--packages.sh",
@@ -57,5 +57,5 @@
 		"p-waterfall": "^2.1.0",
 		"semver": "^7.3.2"
 	},
-	"gitHead": "69b0888c7cb2b673a7e79fd205c30d797be95788"
+	"gitHead": "72cc566656a20828a78b96535200e353db207d76"
 }
