@@ -2,37 +2,34 @@
 	"name": "@ctx-core/lerna",
 	"version": "3.0.26",
 	"description": "ctx-core lerna",
-	"main": "./index.js",
-	"module": "./index.js",
-	"types": "./index.ts",
-	"scripts": {
-		"build": "npm run clean && npm run compile",
-		"clean": "rm -f tsconfig.tsbuildinfo",
-		"compile": "tsc -b",
-		"prepublishOnly": "npm run compile",
-		"exec": "$@"
-	},
-	"bin": {
-		"pwd--packages": "bin/pwd--packages.sh",
-		"lerna--submodules": "bin/lerna--submodules.cjs",
-		"tsc-clean--packages": "bin/tsc-clean--packages.sh"
+	"keywords": [
+		"ctx-core",
+		"lerna"
+	],
+	"homepage": "https://github.com/ctx-core/lerna#readme",
+	"bugs": {
+		"url": "https://github.com/ctx-core/lerna/issues"
 	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/ctx-core/lerna/issues"
 	},
-	"keywords": [
-		"ctx-core",
-		"lerna"
-	],
-	"author": "Brian Takita",
 	"license": "Apache-2.0",
-	"bugs": {
-		"url": "https://github.com/ctx-core/lerna/issues"
+	"author": "Brian Takita",
+	"main": "./index.js",
+	"module": "./index.js",
+	"types": "./index.ts",
+	"bin": {
+		"lerna--submodules": "bin/lerna--submodules.cjs",
+		"pwd--packages": "bin/pwd--packages.sh",
+		"tsc-clean--packages": "bin/tsc-clean--packages.sh"
 	},
-	"homepage": "https://github.com/ctx-core/lerna#readme",
-	"publishConfig": {
-		"access": "public"
+	"scripts": {
+		"build": "npm run clean && npm run compile",
+		"clean": "rm -f tsconfig.tsbuildinfo",
+		"compile": "tsc -b",
+		"exec": "$@",
+		"prepublishOnly": "npm run compile"
 	},
 	"devDependencies": {
 		"@lerna/check-working-tree": "^3.16.5",
@@ -56,6 +53,9 @@
 		"p-pipe": "^3.1.0",
 		"p-waterfall": "^2.1.0",
 		"semver": "^7.3.2"
+	},
+	"publishConfig": {
+		"access": "public"
 	},
 	"gitHead": "72cc566656a20828a78b96535200e353db207d76"
 }
