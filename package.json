@@ -1,6 +1,6 @@
 {
 	"name": "@ctx-core/lerna",
-	"version": "3.0.25",
+	"version": "3.0.26",
 	"description": "ctx-core lerna",
 	"main": "./index.js",
 	"module": "./index.js",
