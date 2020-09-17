@@ -1,6 +1,6 @@
 import path from 'path'
 import pMap from 'p-map'
-import semver from 'semver'
+import semver, { ReleaseType } from 'semver'
 import publish from '@lerna/publish'
 import gitCheckout from '@lerna/publish/lib/git-checkout.js'
 import getCurrentSHA from '@lerna/publish/lib/get-current-sha.js'
@@ -12,37 +12,42 @@ import describeRef from '@lerna/describe-ref'
 import npmConf from '@lerna/npm-conf'
 import { VersionSubmoduleCommand } from './version'
 import { collectUpdatesSubmodule } from './lib'
-
+import type { lerna_logger_type } from './lerna_logger_type'
+import type { lerna_project_type } from './lerna_project_type'
+import type { lerna_options_type } from './lerna_options_type'
+import type { lerna_packageGraph_type } from './lerna_packageGraph_type'
+import type { lerna_package_type } from './lerna_package_type'
 export class PublishSubmoduleCommand extends publish.PublishCommand {
-	argv: any
-	options: any
-	execOpts: any
-	logger: any
-	npmSession: any
-	userAgent: any
-	conf: any
-	otpCache: any
-	getDistTag: () => string
-	hasRootedLeaf: boolean
-	packageGraph: any
-	project: any
-	runPackageLifecycle: any
-	runRootLifecycle: any
-	detectFromPackage: () => any
-	updates: any
-	updatesVersions: Map<any, any>
-	packagesToPublish: any
-	confirmPublish: () => boolean
-	runner: Promise<any>
-	tagPrefix: string
-
+	argv:unknown
+	options:lerna_options_type
+	execOpts:unknown
+	logger:lerna_logger_type
+	npmSession:string
+	userAgent:string
+	conf:{
+		get(prop:string):unknown
+		set(prop:string, value:unknown, opt:unknown):unknown
+	}
+	otpCache:unknown
+	getDistTag:()=>string
+	hasRootedLeaf:boolean
+	packageGraph:lerna_packageGraph_type
+	project:lerna_project_type
+	runPackageLifecycle:(manifest_type, str)=>void
+	runRootLifecycle:unknown
+	detectFromPackage:()=>any
+	updates:unknown[]
+	updatesVersions:Map<any, any>
+	packagesToPublish:lerna_package_type[]
+	confirmPublish:()=>boolean
+	runner:Promise<any>
+	tagPrefix:string
 	constructor(argv) {
 		super(argv)
 	}
-
 	async initialize() {
 		if (!this.project.isIndependent()) {
-			this.logger.info('current version', this.project.version);
+			this.logger.info('current version', this.project.version)
 		}
 		if (this.options.canary) {
 			this.logger.info('canary', 'enabled')
@@ -62,13 +67,13 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 			registry: this.options.registry,
 			'ignore-prepublish': this.options.ignorePrepublish,
 			'ignore-scripts': this.options.ignoreScripts,
-		});
+		})
 		// cache to hold a one-time-password across publishes
 		this.otpCache = { otp: this.conf.get('otp') }
 		this.conf.set('user-agent', this.userAgent, 'cli')
 		if (this.conf.get('registry') === 'https://registry.yarnpkg.com') {
-			this.logger.warn('', "Yarn's registry proxy is broken, replacing with public npm registry")
-			this.logger.warn('', "If you don't have an npm token, you should exit and run `npm login`")
+			this.logger.warn('', 'Yarn\'s registry proxy is broken, replacing with public npm registry')
+			this.logger.warn('', 'If you don\'t have an npm token, you should exit and run `npm login`')
 			this.conf.set('registry', 'https://registry.npmjs.org/', 'cli')
 		}
 		// inject --dist-tag into opts, if present
@@ -85,14 +90,14 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		// don't execute recursively if run from a poorly-named script
 		this.runRootLifecycle =
 			/^(pre|post)?publish$/.test(process.env.npm_lifecycle_event)
-				? stage => {
-					this.logger.warn('lifecycle', 'Skipping root %j because it has already been called', stage)
-				}
-				: stage => this.runPackageLifecycle(this.project.manifest, stage)
+			? stage=>{
+				this.logger.warn('lifecycle', 'Skipping root %j because it has already been called', stage)
+			}
+			: stage=>this.runPackageLifecycle(this.project.manifest, stage)
 		let result
-		if (this.options.bump === "from-git") {
+		if (this.options.bump === 'from-git') {
 			result = await this.detectFromGit()
-		} else if (this.options.bump === "from-package") {
+		} else if (this.options.bump === 'from-package') {
 			result = await this.detectFromPackage()
 		} else if (this.options.canary) {
 			result = await this.detectCanaryVersions()
@@ -101,55 +106,45 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		}
 		if (!result) {
 			// early return from nested VersionCommand
-			return false;
+			return false
 		}
-
 		if (!result.updates.length) {
-			this.logger.success('No changed packages to publish');
-
+			this.logger.success('No changed packages to publish')
 			// still exits zero, aka "ok"
-			return false;
+			return false
 		}
-
 		// (occasionally) redundant private filtering necessary to handle nested VersionCommand
 		this.updates = result.updates
 		this.updatesVersions = new Map(result.updatesVersions)
-
 		this.packagesToPublish = this.updates
-			.map(({ pkg }) => pkg)
-			.filter(pkg => !pkg.private)
-
+			.map(({ pkg })=>pkg)
+			.filter(pkg=>!pkg.private)
 		if (this.options.contents) {
 			// globally override directory to publish
 			for (const pkg of this.packagesToPublish) {
 				pkg.contents = this.options.contents
 			}
 		}
-
 		if (result.needsConfirmation) {
 			// only confirm for --canary, bump === "from-git",
 			// or bump === "from-package", as VersionCommand
 			// has its own confirmation prompt
 			return this.confirmPublish()
 		}
-
-		return true;
+		return true
 	}
-
 	execOptsPkg(pkg) {
 		return Object.assign({}, this.execOpts, { cwd: pkg.location })
 	}
-
 	async verifyWorkingTreeClean() {
-		return Promise.all(this.packagesToPublish.map(pkg => {
+		return Promise.all(this.packagesToPublish.map(pkg=>{
 			return describeRef(this.execOptsPkg(pkg)).then(checkWorkingTree.throwIfUncommitted)
 		}))
 	}
-
 	async detectFromGit() {
-		const matchingPattern = this.project.isIndependent() ? '*@*' : `${ this.tagPrefix }*.*.*`
+		const matchingPattern = this.project.isIndependent() ? '*@*' : `${this.tagPrefix}*.*.*`
 		await this.verifyWorkingTreeClean()
-		const updates = await Promise.all(this.packagesToPublish.map(pkg => {
+		const updates = await Promise.all(this.packagesToPublish.map(pkg=>{
 			const execOpts = this.execOptsPkg(pkg)
 			const taggedPackageNames = getCurrentTags(execOpts, matchingPattern)
 			if (!taggedPackageNames.length) {
@@ -157,12 +152,12 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 				return []
 			}
 			if (this.project.isIndependent()) {
-				return taggedPackageNames.map(name => this.packageGraph.get(name))
+				return taggedPackageNames.map(name=>this.packageGraph.get(name))
 			}
 			return getTaggedPackages(this.packageGraph, this.project.rootPath, execOpts)
 		}))
 		const updatesVersions = updates.map(
-			({ pkg }) => [pkg.name, pkg.version]
+			({ pkg })=>[pkg.name, pkg.version]
 		)
 		return {
 			updates,
@@ -170,7 +165,6 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 			needsConfirmation: true,
 		}
 	}
-
 	annotateGitHead() {
 		try {
 			for (const pkg of this.packagesToPublish) {
@@ -187,7 +181,6 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		}
 		// writing changes to disk handled in serializeChanges()
 	}
-
 	async detectCanaryVersions() {
 		const {
 			bump = 'prepatch',
@@ -197,13 +190,16 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 			includeMergedTags,
 		} = this.options
 		// "prerelease" and "prepatch" are identical, for our purposes
-		const release = bump.startsWith('pre') ? bump.replace('release', 'patch') : `pre${ bump }`
+		const release: string =
+			bump.startsWith('pre')
+			? bump.replace('release', 'patch')
+			: `pre${bump}`
 		// attempting to publish a canary release with local changes is not allowed
 		await this.verifyWorkingTreeClean()
 		// find changed packages since last release, if any
 		const updatesA2 = await Promise.all(
 			this.packageGraph.rawPackageList.map(
-				pkg => {
+				pkg=>{
 					return collectUpdatesSubmodule(
 						pkg,
 						this.packageGraph.rawPackageList,
@@ -221,25 +217,25 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 			)
 		)
 		const updates = ([].concat(...updatesA2))
-			.filter(({ pkg }) => !pkg.private)
-		const makeVersion = ({ lastVersion, refCount, sha }) => {
+			.filter(({ pkg })=>!pkg.private)
+		const makeVersion = ({ lastVersion, refCount, sha })=>{
 			// the next version is bumped without concern for preid or current index
-			const nextVersion = semver.inc(lastVersion, release.replace('pre', ''))
+			const nextVersion = semver.inc(lastVersion, release.replace('pre', '') as ReleaseType)
 			// semver.inc() starts a new prerelease at .0, git describe starts at .1
 			// and build metadata is always ignored when comparing dependency ranges
-			return `${ nextVersion }-${ preid }.${ Math.max(0, refCount - 1) }+${ sha }`
+			return `${nextVersion}-${preid}.${Math.max(0, refCount - 1)}+${sha}`
 		}
 		let updatesVersions
 		if (this.project.isIndependent()) {
 			// each package is described against its tags only
-			updatesVersions = await pMap(updates, async ({ pkg }) => {
+			updatesVersions = await pMap(updates, async ({ pkg })=>{
 				const {
 					lastVersion = pkg.version,
 					refCount,
 					sha,
 				} = await describeRef(
 					{
-						match: `${ pkg.name }@*`,
+						match: `${pkg.name}@*`,
 						cwd: pkg.location,
 					},
 					includeMergedTags,
@@ -255,7 +251,7 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		} else {
 			// all packages are described against the last tag
 			updatesVersions = await Promise.all(
-				updates.map(async ({ pkg }) => {
+				updates.map(async ({ pkg })=>{
 					const { cwd } = this.execOptsPkg(pkg)
 					const {
 						lastVersion = pkg.version,
@@ -263,7 +259,7 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 						sha,
 					} = await describeRef(
 						{
-							match: `${ this.tagPrefix }*.*.*`,
+							match: `${this.tagPrefix}*.*.*`,
 							cwd,
 						},
 						includeMergedTags
@@ -273,7 +269,7 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 						refCount,
 						sha,
 					})
-					return updates.map(({ pkg }) => [pkg.name, version])
+					return updates.map(({ pkg })=>[pkg.name, version])
 				}))
 		}
 		return {
@@ -282,10 +278,9 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 			needsConfirmation: true,
 		}
 	}
-
 	async resetChanges() {
-		const gitCheckout_ = (dirtyManifests, execOpts) => {
-			return gitCheckout(dirtyManifests, {}, execOpts).catch(err => {
+		const gitCheckout_ = (dirtyManifests, execOpts)=>{
+			return gitCheckout(dirtyManifests, {}, execOpts).catch(err=>{
 				this.logger.silly('EGITCHECKOUT', err.message)
 				this.logger.notice('FYI', 'Unable to reset working tree changes, this probably isn\'t a git repo.')
 			})
@@ -294,7 +289,7 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		// and we should always __attempt_ to leave the working tree clean
 		return await Promise.all([
 			gitCheckout_([this.project.manifest], this.execOpts),
-			...this.packagesToPublish.map(pkg => {
+			...this.packagesToPublish.map(pkg=>{
 				const execOpts = this.execOptsPkg(pkg)
 				const { cwd } = execOpts
 				return gitCheckout_(

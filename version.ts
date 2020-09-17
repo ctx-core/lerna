@@ -22,15 +22,21 @@ import runLifecycle from '@lerna/run-lifecycle'
 import checkWorkingTree from '@lerna/check-working-tree'
 import describeRef from '@lerna/describe-ref'
 import { collectUpdatesSubmodule } from './lib'
+import type { lerna_logger_type } from './lerna_logger_type'
+import type { lerna_project_type } from './lerna_project_type'
+import type { lerna_options_type } from './lerna_options_type'
+import type { lerna_packageGraph_type } from './lerna_packageGraph_type'
 
 export class VersionSubmoduleCommand extends version.VersionCommand {
-	argv: any
+	argv: unknown
 	runner: Promise<any>
-	options: any
-	execOpts: any
-	gitOpts: any
-	logger: any
-	project: any
+	options: lerna_options_type
+	execOpts: unknown
+	gitOpts:{
+		amend: unknown
+	}
+	logger: lerna_logger_type
+	project: lerna_project_type
 	concurrency: number
 	globalVersion: string
 	tagPrefix: string
@@ -40,22 +46,22 @@ export class VersionSubmoduleCommand extends version.VersionCommand {
 	gitRemote: string
 	commitAndTag: boolean
 	gitReset: boolean
-	updates: any[]
-	packageGraph: any
+	updates: unknown[]
+	packageGraph: lerna_packageGraph_type
 	composed: boolean
 	hasRootedLeaf: boolean
 	runPackageLifecycle: (any, string) => any
 	runRootLifecycle: (any) => any
-	setUpdatesForVersions: any
-	getVersionsForUpdates: any
+	setUpdatesForVersions: (version: unknown) => unknown
+	getVersionsForUpdates: () => unknown
 	confirmVersions: () => Promise<any>
-	packagesToVersion: any[]
+	packagesToVersion: unknown[]
 	updatesVersions: Map<string, string>
-	releaseNotes: { name: string, notes: any }[]
+	releaseNotes: { name: string, notes: unknown }[]
 	commitAndTagUpdates: () => Promise<any>
 	tags: string[]
 	savePrefix: string
-	packagesToPublish: any
+	packagesToPublish: unknown
 	enableProgressBar: () => void
 	prepareRegistryActions: () => Promise<void>
 	prepareLicenseActions: () => Promise<void>
