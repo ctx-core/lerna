@@ -31,6 +31,9 @@
     "exec": "$@",
     "prepublishOnly": "npm run compile"
   },
+  "dependencies": {
+    "@lerna/collect-uncommitted": "~3.16.5"
+  },
   "devDependencies": {
     "@lerna/check-working-tree": "^3.16.5",
     "@lerna/cli": "^3.18.5",
@@ -57,8 +60,5 @@
   "publishConfig": {
     "access": "public"
   },
-  "gitHead": "72cc566656a20828a78b96535200e353db207d76",
-  "dependencies": {
-    "@lerna/collect-uncommitted": "~3.16.5"
-  }
+  "gitHead": "72cc566656a20828a78b96535200e353db207d76"
 }
