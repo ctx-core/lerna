@@ -8,6 +8,8 @@ import describeRef from '@lerna/describe-ref'
 
 import { VersionSubmoduleCommand } from './version'
 import { PublishSubmoduleCommand } from './publish'
+import type { lerna_package_type } from './lerna_package_type'
+import type { lerna_packages_type } from './lerna_packages_type'
 
 export async function lerna_version__submodules(argv) {
 	const command = new VersionSubmoduleCommand(argv)
@@ -86,8 +88,8 @@ export async function collectUpdatesSubmodule(submodulePackage, filteredPackages
 }
 
 export async function collectPackagesSubmodule(
-	submodulePackage,
-	packages,
+	submodulePackage: lerna_package_type,
+	packages: lerna_packages_type,
 	{
 		isCandidate = (_node, _name) => true,
 		onInclude,
@@ -102,7 +104,7 @@ export async function collectPackagesSubmodule(
 		collectDependents(candidates).forEach(node => candidates.add(node))
 	}
 	// The result should always be in the same order as the input
-	const updates = []
+	const updates = [] as lerna_package_type[]
 	packages.forEach((node, name) => {
 		if (candidates.has(node)) {
 			if (onInclude) {

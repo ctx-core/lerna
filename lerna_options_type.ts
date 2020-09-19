@@ -1,5 +1,5 @@
 export type lerna_options_type = {
-	allowBranch:unknown
+	allowBranch:string
 	bump:string
 	canary:unknown
 	contents:unknown

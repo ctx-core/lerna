@@ -15,91 +15,100 @@ import { collectUpdatesSubmodule } from './lib'
 import type { lerna_logger_type } from './lerna_logger_type'
 import type { lerna_project_type } from './lerna_project_type'
 import type { lerna_options_type } from './lerna_options_type'
-import type { lerna_packageGraph_type } from './lerna_packageGraph_type'
+import type { lerna_packages_type } from './lerna_packages_type'
 import type { lerna_package_type } from './lerna_package_type'
+export type lerna_conf_type = {
+	get(prop:string):unknown
+	set(prop:string, value:unknown, opt:unknown):unknown
+}
+export type getDistTag = ()=>string
+export type detectFromPackage_type = ()=>unknown
+export type runPackageLifecycle_type = (manifest_type, str)=>void
+export type confirmPublish_type = ()=>boolean
 export class PublishSubmoduleCommand extends publish.PublishCommand {
 	argv:unknown
-	options:lerna_options_type
+	options?:lerna_options_type
 	execOpts:unknown
-	logger:lerna_logger_type
-	npmSession:string
-	userAgent:string
-	conf:{
-		get(prop:string):unknown
-		set(prop:string, value:unknown, opt:unknown):unknown
-	}
+	logger?:lerna_logger_type
+	npmSession?:string
+	userAgent?:string
+	conf?:lerna_conf_type
 	otpCache:unknown
-	getDistTag:()=>string
-	hasRootedLeaf:boolean
-	packageGraph:lerna_packageGraph_type
-	project:lerna_project_type
-	runPackageLifecycle:(manifest_type, str)=>void
+	getDistTag?:getDistTag
+	hasRootedLeaf?:boolean
+	packageGraph?:lerna_packages_type
+	project?:lerna_project_type
+	runPackageLifecycle?:runPackageLifecycle_type
 	runRootLifecycle:unknown
-	detectFromPackage:()=>any
-	updates:unknown[]
-	updatesVersions:Map<any, any>
-	packagesToPublish:lerna_package_type[]
-	confirmPublish:()=>boolean
-	runner:Promise<any>
-	tagPrefix:string
+	detectFromPackage?:detectFromPackage_type
+	updates?:lerna_packages_type
+	updatesVersions?:Map<any, any>
+	packagesToPublish?:lerna_package_type[]
+	confirmPublish?:()=>boolean
+	runner?:Promise<any>
+	tagPrefix?:string
 	constructor(argv) {
 		super(argv)
 	}
 	async initialize() {
-		if (!this.project.isIndependent()) {
-			this.logger.info('current version', this.project.version)
+		const project = this.project as lerna_project_type
+		const logger = this.logger as lerna_logger_type
+		const options = this.options as lerna_options_type
+		const conf = this.conf as lerna_conf_type
+		if (!project.isIndependent()) {
+			logger.info('current version', project.version)
 		}
-		if (this.options.canary) {
-			this.logger.info('canary', 'enabled')
+		if (options.canary) {
+			logger.info('canary', 'enabled')
 		}
-		if (this.options.requireScripts) {
-			this.logger.info('require-scripts', 'enabled')
+		if (options.requireScripts) {
+			logger.info('require-scripts', 'enabled')
 		}
 		// npmSession and user-agent are consumed by npm-registry-fetch (via libnpmpublish)
-		this.logger.verbose('session', this.npmSession)
-		this.logger.verbose('user-agent', this.userAgent)
+		logger.verbose('session', this.npmSession)
+		logger.verbose('user-agent', this.userAgent)
 		this.conf = npmConf({
 			lernaCommand: 'publish',
-			_auth: this.options.legacyAuth,
+			_auth: options.legacyAuth,
 			npmSession: this.npmSession,
 			npmVersion: this.userAgent,
-			otp: this.options.otp,
-			registry: this.options.registry,
-			'ignore-prepublish': this.options.ignorePrepublish,
-			'ignore-scripts': this.options.ignoreScripts,
+			otp: options.otp,
+			registry: options.registry,
+			'ignore-prepublish': options.ignorePrepublish,
+			'ignore-scripts': options.ignoreScripts,
 		})
 		// cache to hold a one-time-password across publishes
-		this.otpCache = { otp: this.conf.get('otp') }
-		this.conf.set('user-agent', this.userAgent, 'cli')
-		if (this.conf.get('registry') === 'https://registry.yarnpkg.com') {
-			this.logger.warn('', 'Yarn\'s registry proxy is broken, replacing with public npm registry')
-			this.logger.warn('', 'If you don\'t have an npm token, you should exit and run `npm login`')
-			this.conf.set('registry', 'https://registry.npmjs.org/', 'cli')
+		this.otpCache = { otp: conf.get('otp') }
+		conf.set('user-agent', this.userAgent, 'cli')
+		if (conf.get('registry') === 'https://registry.yarnpkg.com') {
+			logger.warn('', 'Yarn\'s registry proxy is broken, replacing with public npm registry')
+			logger.warn('', 'If you don\'t have an npm token, you should exit and run `npm login`')
+			conf.set('registry', 'https://registry.npmjs.org/', 'cli')
 		}
 		// inject --dist-tag into opts, if present
-		const distTag = this.getDistTag()
+		const distTag = (this.getDistTag as getDistTag)()
 		if (distTag) {
-			this.conf.set('tag', distTag.trim(), 'cli')
+			conf.set('tag', distTag.trim(), 'cli')
 		}
 		// a "rooted leaf" is the regrettable pattern of adding "." to the "packages" config in lerna.json
-		this.hasRootedLeaf = this.packageGraph.has(this.project.manifest.name)
+		this.hasRootedLeaf = (this.packageGraph as lerna_packages_type).has(project.manifest.name)
 		if (this.hasRootedLeaf) {
-			this.logger.info('publish', 'rooted leaf detected, skipping synthetic root lifecycles')
+			logger.info('publish', 'rooted leaf detected, skipping synthetic root lifecycles')
 		}
-		this.runPackageLifecycle = runLifecycle.createRunner(this.options)
+		this.runPackageLifecycle = runLifecycle.createRunner(options)
 		// don't execute recursively if run from a poorly-named script
 		this.runRootLifecycle =
-			/^(pre|post)?publish$/.test(process.env.npm_lifecycle_event)
+			/^(pre|post)?publish$/.test(process.env.npm_lifecycle_event as string)
 			? stage=>{
-				this.logger.warn('lifecycle', 'Skipping root %j because it has already been called', stage)
+				logger.warn('lifecycle', 'Skipping root %j because it has already been called', stage)
 			}
-			: stage=>this.runPackageLifecycle(this.project.manifest, stage)
+			: stage=>(this.runPackageLifecycle as runPackageLifecycle_type)(project.manifest, stage)
 		let result
-		if (this.options.bump === 'from-git') {
+		if (options.bump === 'from-git') {
 			result = await this.detectFromGit()
-		} else if (this.options.bump === 'from-package') {
-			result = await this.detectFromPackage()
-		} else if (this.options.canary) {
+		} else if (options.bump === 'from-package') {
+			result = await (this.detectFromPackage as detectFromPackage_type)()
+		} else if (options.canary) {
 			result = await this.detectCanaryVersions()
 		} else {
 			result = await new VersionSubmoduleCommand(this.argv)
@@ -109,27 +118,27 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 			return false
 		}
 		if (!result.updates.length) {
-			this.logger.success('No changed packages to publish')
+			logger.success('No changed packages to publish')
 			// still exits zero, aka "ok"
 			return false
 		}
 		// (occasionally) redundant private filtering necessary to handle nested VersionCommand
 		this.updates = result.updates
 		this.updatesVersions = new Map(result.updatesVersions)
-		this.packagesToPublish = this.updates
+		this.packagesToPublish = (this.updates as lerna_packages_type)
 			.map(({ pkg })=>pkg)
 			.filter(pkg=>!pkg.private)
-		if (this.options.contents) {
+		if (options.contents) {
 			// globally override directory to publish
 			for (const pkg of this.packagesToPublish) {
-				pkg.contents = this.options.contents
+				pkg.contents = options.contents
 			}
 		}
 		if (result.needsConfirmation) {
 			// only confirm for --canary, bump === "from-git",
 			// or bump === "from-package", as VersionCommand
 			// has its own confirmation prompt
-			return this.confirmPublish()
+			return (this.confirmPublish as confirmPublish_type)()
 		}
 		return true
 	}
@@ -137,24 +146,29 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		return Object.assign({}, this.execOpts, { cwd: pkg.location })
 	}
 	async verifyWorkingTreeClean() {
-		return Promise.all(this.packagesToPublish.map(pkg=>{
+		const packagesToPublish = this.packagesToPublish as lerna_package_type[]
+		return Promise.all(packagesToPublish.map(pkg=>{
 			return describeRef(this.execOptsPkg(pkg)).then(checkWorkingTree.throwIfUncommitted)
 		}))
 	}
 	async detectFromGit() {
-		const matchingPattern = this.project.isIndependent() ? '*@*' : `${this.tagPrefix}*.*.*`
+		const project = this.project as lerna_project_type
+		const logger = this.logger as lerna_logger_type
+		const packagesToPublish = this.packagesToPublish as lerna_package_type[]
+		const packageGraph = this.packageGraph as lerna_packages_type
+		const matchingPattern = project.isIndependent() ? '*@*' : `${this.tagPrefix}*.*.*`
 		await this.verifyWorkingTreeClean()
-		const updates = await Promise.all(this.packagesToPublish.map(pkg=>{
+		const updates = await Promise.all(packagesToPublish.map(pkg=>{
 			const execOpts = this.execOptsPkg(pkg)
 			const taggedPackageNames = getCurrentTags(execOpts, matchingPattern)
 			if (!taggedPackageNames.length) {
-				this.logger.notice('from-git', 'No tagged release found')
+				logger.notice('from-git', 'No tagged release found')
 				return []
 			}
-			if (this.project.isIndependent()) {
-				return taggedPackageNames.map(name=>this.packageGraph.get(name))
+			if (project.isIndependent()) {
+				return taggedPackageNames.map(name=>packageGraph.get(name))
 			}
-			return getTaggedPackages(this.packageGraph, this.project.rootPath, execOpts)
+			return getTaggedPackages(packageGraph, project.rootPath, execOpts)
 		}))
 		const updatesVersions = updates.map(
 			({ pkg })=>[pkg.name, pkg.version]
@@ -166,15 +180,17 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		}
 	}
 	annotateGitHead() {
+		const packagesToPublish = this.packagesToPublish as lerna_package_type[]
+		const logger = this.logger as lerna_logger_type
 		try {
-			for (const pkg of this.packagesToPublish) {
+			for (const pkg of packagesToPublish) {
 				// provide gitHead property that is normally added during npm publish
 				pkg.set('gitHead', getCurrentSHA(this.execOptsPkg(pkg)))
 			}
 		} catch (err) {
 			// from-package should be _able_ to run without git, but at least we tried
-			this.logger.silly('EGITHEAD', err.message)
-			this.logger.notice(
+			logger.silly('EGITHEAD', err.message)
+			logger.notice(
 				'FYI',
 				'Unable to set temporary gitHead property, it will be missing from registry metadata'
 			)
@@ -182,28 +198,31 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		// writing changes to disk handled in serializeChanges()
 	}
 	async detectCanaryVersions() {
+		const options = this.options as lerna_options_type
+		const packageGraph = this.packageGraph as lerna_packages_type
+		const project = this.project as lerna_project_type
 		const {
 			bump = 'prepatch',
 			preid = 'alpha',
 			ignoreChanges,
 			forcePublish,
 			includeMergedTags,
-		} = this.options
+		} = options
 		// "prerelease" and "prepatch" are identical, for our purposes
-		const release: string =
+		const release:string =
 			bump.startsWith('pre')
 			? bump.replace('release', 'patch')
 			: `pre${bump}`
 		// attempting to publish a canary release with local changes is not allowed
 		await this.verifyWorkingTreeClean()
 		// find changed packages since last release, if any
-		const updatesA2 = await Promise.all(
-			this.packageGraph.rawPackageList.map(
+		const updates_a2 = await Promise.all(
+			packageGraph.rawPackageList.map(
 				pkg=>{
 					return collectUpdatesSubmodule(
 						pkg,
-						this.packageGraph.rawPackageList,
-						this.packageGraph,
+						packageGraph.rawPackageList,
+						packageGraph,
 						this.execOptsPkg(pkg),
 						{
 							bump: 'prerelease',
@@ -215,8 +234,8 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 					)
 				}
 			)
-		)
-		const updates = ([].concat(...updatesA2))
+		) as {pkg: lerna_package_type}[][]
+		const updates = (updates_a2.flat())
 			.filter(({ pkg })=>!pkg.private)
 		const makeVersion = ({ lastVersion, refCount, sha })=>{
 			// the next version is bumped without concern for preid or current index
@@ -226,9 +245,10 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 			return `${nextVersion}-${preid}.${Math.max(0, refCount - 1)}+${sha}`
 		}
 		let updatesVersions
-		if (this.project.isIndependent()) {
+		if (project.isIndependent()) {
 			// each package is described against its tags only
-			updatesVersions = await pMap(updates, async ({ pkg })=>{
+			updatesVersions = await pMap(updates, async ({ pkg: in_pkg })=>{
+				const pkg = in_pkg as lerna_package_type
 				const {
 					lastVersion = pkg.version,
 					refCount,
@@ -279,17 +299,20 @@ export class PublishSubmoduleCommand extends publish.PublishCommand {
 		}
 	}
 	async resetChanges() {
+		const logger = this.logger as lerna_logger_type
+		const project = this.project as lerna_project_type
+		const packagesToPublish = this.packagesToPublish as lerna_package_type[]
 		const gitCheckout_ = (dirtyManifests, execOpts)=>{
 			return gitCheckout(dirtyManifests, {}, execOpts).catch(err=>{
-				this.logger.silly('EGITCHECKOUT', err.message)
-				this.logger.notice('FYI', 'Unable to reset working tree changes, this probably isn\'t a git repo.')
+				logger.silly('EGITCHECKOUT', err.message)
+				logger.notice('FYI', 'Unable to reset working tree changes, this probably isn\'t a git repo.')
 			})
 		}
 		// the package.json files are changed (by gitHead if not --canary)
 		// and we should always __attempt_ to leave the working tree clean
 		return await Promise.all([
-			gitCheckout_([this.project.manifest], this.execOpts),
-			...this.packagesToPublish.map(pkg=>{
+			gitCheckout_([project.manifest], this.execOpts),
+			...packagesToPublish.map(pkg=>{
 				const execOpts = this.execOptsPkg(pkg)
 				const { cwd } = execOpts
 				return gitCheckout_(

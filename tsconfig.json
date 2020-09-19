@@ -23,9 +23,11 @@
 		"outDir": ".",
 		"declarationDir": ".",
 		"lib": [
-			"dom"
+			"dom",
+			"ES2019"
 		],
-		"importsNotUsedAsValues": "error"
+		"importsNotUsedAsValues": "error",
+		"strict": true
 	},
 	"exclude": [
 		"node_modules"

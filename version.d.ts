@@ -2,7 +2,7 @@ import version from '@lerna/version';
 import type { lerna_logger_type } from './lerna_logger_type';
 import type { lerna_project_type } from './lerna_project_type';
 import type { lerna_options_type } from './lerna_options_type';
-import type { lerna_packageGraph_type } from './lerna_packageGraph_type';
+import type { lerna_packages_type } from './lerna_packages_type';
 export declare class VersionSubmoduleCommand extends version.VersionCommand {
     argv: unknown;
     runner: Promise<any>;
@@ -23,7 +23,7 @@ export declare class VersionSubmoduleCommand extends version.VersionCommand {
     commitAndTag: boolean;
     gitReset: boolean;
     updates: unknown[];
-    packageGraph: lerna_packageGraph_type;
+    packageGraph: lerna_packages_type;
     composed: boolean;
     hasRootedLeaf: boolean;
     runPackageLifecycle: (any: any, string: any) => any;
