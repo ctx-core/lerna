@@ -1,5 +1,13 @@
 # @ctx-core/lerna
 
+## 5.0.2
+
+### Patch Changes
+
+- fix: install issues: using explicit workspace: versioning
+- Updated dependencies [undefined]
+  - @ctx-core/array@19.0.2
+
 ## 5.0.1
 
 ### Patch Changes
