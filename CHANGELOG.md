@@ -1,5 +1,11 @@
 # @ctx-core/lerna
 
+## 5.0.10
+
+### Patch Changes
+
+- @ctx-core/array@19.0.10
+
 ## 5.0.9
 
 ### Patch Changes
