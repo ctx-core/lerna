@@ -1,63 +1,63 @@
 {
-	"name": "@ctx-core/lerna",
-	"version": "5.0.18",
-	"description": "ctx-core lerna",
-	"keywords": [
-		"ctx-core",
-		"lerna"
-	],
-	"homepage": "https://github.com/ctx-core/lerna#readme",
-	"bugs": {
-		"url": "https://github.com/ctx-core/lerna/issues"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/ctx-core/lerna/issues"
-	},
-	"license": "Apache-2.0",
-	"author": "Brian Takita",
-	"main": "./index.js",
-	"module": "./index.js",
-	"types": "./index.ts",
-	"bin": {
-		"lerna--submodules": "bin/lerna--submodules.cjs"
-	},
-	"scripts": {
-		"build": "npm run clean && npm run compile",
-		"clean": "rm -f tsconfig.tsbuildinfo",
-		"compile": "./node_modules/.bin/tsc -b",
-		"exec": "$@",
-		"prepublishOnly": "npm run compile"
-	},
-	"dependencies": {
-		"@ctx-core/array": "workspace:^19.0.18",
-		"@lerna/collect-uncommitted": "~3.16.5"
-	},
-	"devDependencies": {
-		"@lerna/check-working-tree": "^3.16.5",
-		"@lerna/cli": "^3.18.5",
-		"@lerna/collect-updates": "^3.20.0",
-		"@lerna/conventional-commits": "^3.22.0",
-		"@lerna/describe-ref": "^3.16.5",
-		"@lerna/npm-conf": "^3.16.0",
-		"@lerna/npm-publish": "^3.18.5",
-		"@lerna/pack-directory": "^3.16.4",
-		"@lerna/publish": "^3.22.1",
-		"@lerna/run-lifecycle": "^3.16.2",
-		"@lerna/run-topologically": "^3.18.5",
-		"@lerna/validation-error": "^3.13.0",
-		"@lerna/version": "^3.22.1",
-		"dedent": "^0.7.0",
-		"esm": "^3.2.25",
-		"lerna": "^3.22.1",
-		"npmlog": "^4.1.2",
-		"p-map": "^4.0.0",
-		"p-pipe": "^3.1.0",
-		"p-waterfall": "^2.1.0",
-		"semver": "^7.3.2",
-		"typescript": "^4.0.3"
-	},
-	"publishConfig": {
-		"access": "public"
-	}
+  "name": "@ctx-core/lerna",
+  "version": "5.0.19",
+  "description": "ctx-core lerna",
+  "keywords": [
+    "ctx-core",
+    "lerna"
+  ],
+  "homepage": "https://github.com/ctx-core/lerna#readme",
+  "bugs": {
+    "url": "https://github.com/ctx-core/lerna/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ctx-core/lerna/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Brian Takita",
+  "main": "./index.js",
+  "module": "./index.js",
+  "types": "./index.ts",
+  "bin": {
+    "lerna--submodules": "bin/lerna--submodules.cjs"
+  },
+  "scripts": {
+    "build": "npm run clean && npm run compile",
+    "clean": "rm -f tsconfig.tsbuildinfo",
+    "compile": "./node_modules/.bin/tsc -b",
+    "exec": "$@",
+    "prepublishOnly": "npm run compile"
+  },
+  "dependencies": {
+    "@ctx-core/array": "workspace:^19.0.19",
+    "@lerna/collect-uncommitted": "~3.16.5"
+  },
+  "devDependencies": {
+    "@lerna/check-working-tree": "^3.16.5",
+    "@lerna/cli": "^3.18.5",
+    "@lerna/collect-updates": "^3.20.0",
+    "@lerna/conventional-commits": "^3.22.0",
+    "@lerna/describe-ref": "^3.16.5",
+    "@lerna/npm-conf": "^3.16.0",
+    "@lerna/npm-publish": "^3.18.5",
+    "@lerna/pack-directory": "^3.16.4",
+    "@lerna/publish": "^3.22.1",
+    "@lerna/run-lifecycle": "^3.16.2",
+    "@lerna/run-topologically": "^3.18.5",
+    "@lerna/validation-error": "^3.13.0",
+    "@lerna/version": "^3.22.1",
+    "dedent": "^0.7.0",
+    "esm": "^3.2.25",
+    "lerna": "^3.22.1",
+    "npmlog": "^4.1.2",
+    "p-map": "^4.0.0",
+    "p-pipe": "^3.1.0",
+    "p-waterfall": "^2.1.0",
+    "semver": "^7.3.2",
+    "typescript": "^4.0.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
