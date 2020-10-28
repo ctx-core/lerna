@@ -1,5 +1,13 @@
 # @ctx-core/lerna
 
+## 5.0.21
+
+### Patch Changes
+
+- typescript: ^4.0.3 -> ^4.0.5
+- Updated dependencies [undefined]
+  - @ctx-core/array@19.0.21
+
 ## 5.0.20
 
 ### Patch Changes
