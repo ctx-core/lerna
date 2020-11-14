@@ -1,6 +1,6 @@
 {
 	"name": "@ctx-core/lerna",
-	"version": "5.0.21",
+	"version": "5.0.22",
 	"description": "ctx-core lerna",
 	"keywords": [
 		"ctx-core",
@@ -30,7 +30,7 @@
 		"prepublishOnly": "npm run compile"
 	},
 	"dependencies": {
-		"@ctx-core/array": "workspace:^19.0.21",
+		"@ctx-core/array": "workspace:^19.0.22",
 		"@lerna/collect-uncommitted": "~3.16.5"
 	},
 	"devDependencies": {
