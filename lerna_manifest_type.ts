@@ -1,4 +1,4 @@
-export type lerna_manifest_type = {
+export interface lerna_manifest_type {
 	location:string
 	name:string
 }

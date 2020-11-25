@@ -17,7 +17,7 @@ import type { lerna_project_type } from './lerna_project_type'
 import type { lerna_options_type } from './lerna_options_type'
 import type { lerna_packages_type } from './lerna_packages_type'
 import type { lerna_package_type } from './lerna_package_type'
-export type lerna_conf_type = {
+export interface lerna_conf_type {
 	get(prop:string):unknown
 	set(prop:string, value:unknown, opt:unknown):unknown
 }

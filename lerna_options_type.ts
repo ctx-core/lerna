@@ -1,11 +1,11 @@
-export type lerna_options_type = {
+export interface lerna_options_type {
 	allowBranch:string
 	bump:string
 	canary:unknown
 	contents:unknown
-	changelog: unknown
-	changelogPreset: unknown
-	conventionalCommits: unknown
+	changelog:unknown
+	changelogPreset:unknown
+	conventionalCommits:unknown
 	conventionalGraduate:unknown
 	conventionalPrerelease:unknown
 	forcePublish:unknown

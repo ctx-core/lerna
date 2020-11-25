@@ -1,4 +1,4 @@
-export declare type lerna_options_type = {
+export interface lerna_options_type {
     allowBranch: string;
     bump: string;
     canary: unknown;
@@ -21,4 +21,4 @@ export declare type lerna_options_type = {
     registry: unknown;
     rejectCycles: unknown;
     requireScripts: boolean;
-};
+}
