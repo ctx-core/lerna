@@ -1,5 +1,11 @@
 # @ctx-core/lerna
 
+## 5.1.3
+
+### Patch Changes
+
+- semver: ^7.3.2 -> ^7.3.4
+
 ## 5.1.2
 
 ### Patch Changes

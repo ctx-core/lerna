@@ -1,6 +1,6 @@
 {
 	"name": "@ctx-core/lerna",
-	"version": "5.1.2",
+	"version": "5.1.3",
 	"description": "ctx-core lerna",
 	"keywords": [
 		"ctx-core",
@@ -54,7 +54,7 @@
 		"p-map": "^4.0.0",
 		"p-pipe": "^3.1.0",
 		"p-waterfall": "^2.1.0",
-		"semver": "^7.3.2",
+		"semver": "^7.3.4",
 		"typescript": "^4.1.2"
 	},
 	"publishConfig": {
