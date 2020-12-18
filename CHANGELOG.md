@@ -1,5 +1,11 @@
 # @ctx-core/lerna
 
+## 5.1.10
+
+### Patch Changes
+
+- p-waterfall: ^2.1.0 -> ^2.1.1
+
 ## 5.1.9
 
 ### Patch Changes
