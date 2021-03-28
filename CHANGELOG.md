@@ -1,5 +1,27 @@
 # @ctx-core/lerna
 
+## 5.1.31
+
+### Patch Changes
+
+- 39607cca5: semver: ^7.3.4 -> ^7.3.5
+- 39607cca5: @lerna/validation-error: ^3.13.0 -> ^4.0.0
+- 39607cca5: typescript: ^4.1.3 -> ^4.2.3
+- 39607cca5: @lerna/check-working-tree: ^3.16.5 -> ^4.0.0
+- 39607cca5: @lerna/npm-publish: ^3.18.5 -> ^4.0.0
+- 39607cca5: @lerna/describe-ref: ^3.16.5 -> ^4.0.0
+- 39607cca5: lerna: ^3.22.1 -> ^4.0.0
+- 39607cca5: @lerna/npm-conf: ^3.16.0 -> ^4.0.0
+- 39607cca5: @lerna/conventional-commits: ^3.22.0 -> ^4.0.0
+- 39607cca5: @lerna/pack-directory: ^3.16.4 -> ^4.0.0
+- 39607cca5: @lerna/collect-uncommitted: ~3.16.5 -> 4.0.0
+- 39607cca5: @lerna/collect-updates: ^3.20.0 -> ^4.0.0
+- 39607cca5: @lerna/run-topologically: ^3.18.5 -> ^4.0.0
+- 39607cca5: @lerna/cli: ^3.18.5 -> ^4.0.0
+- 39607cca5: @lerna/version: ^3.22.1 -> ^4.0.0
+- 39607cca5: @lerna/run-lifecycle: ^3.16.2 -> ^4.0.0
+- 39607cca5: @lerna/publish: ^3.22.1 -> ^4.0.0
+
 ## 5.1.30
 
 ### Patch Changes
