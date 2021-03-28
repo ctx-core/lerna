@@ -1,5 +1,13 @@
 # @ctx-core/lerna
 
+## 5.1.32
+
+### Patch Changes
+
+- fix: npm run compile: tsc -b .
+- Updated dependencies [undefined]
+  - @ctx-core/array@20.2.1
+
 ## 5.1.31
 
 ### Patch Changes
