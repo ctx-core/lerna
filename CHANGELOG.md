@@ -1,5 +1,13 @@
 # @ctx-core/lerna
 
+## 5.1.33
+
+### Patch Changes
+
+- fix: npm publish: https://github.com/npm/cli/issues/2834
+- Updated dependencies [undefined]
+  - @ctx-core/array@20.2.2
+
 ## 5.1.32
 
 ### Patch Changes
